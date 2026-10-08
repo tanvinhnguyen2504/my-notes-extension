@@ -4,7 +4,7 @@
 // Days are day-key strings ("YYYY-MM-DD"), never timestamps -- see utils.js for
 // why. The chip reports a chosen day through onPick; null means unscheduled.
 
-import { formatDayKeyShort, isDayKey } from "../core/utils.js";
+import { formatDayKeyShort, isDayKey } from "../core/utils.ts";
 import { closeMenu } from "../ui/menu.js";
 
 // Renders the chip and its hidden input for `item`, and wires both.

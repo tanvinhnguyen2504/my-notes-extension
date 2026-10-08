@@ -16,7 +16,7 @@ import {
   setAllDone,
   sortByPriority,
   touchItem,
-} from "./core/utils.js";
+} from "./core/utils.ts";
 import { createDragController } from "./ui/drag-drop.js";
 import { closeMenu, installMenuDismissal } from "./ui/menu.js";
 import { installSettings, renderSettings } from "./features/settings.js";
