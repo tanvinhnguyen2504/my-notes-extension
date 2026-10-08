@@ -17,12 +17,12 @@ import {
   sortByPriority,
   touchItem,
 } from "./core/utils.ts";
-import { createDragController } from "./ui/drag-drop.js";
-import { closeMenu, installMenuDismissal } from "./ui/menu.js";
-import { installSettings, renderSettings } from "./features/settings.js";
-import { attachPriorityTag } from "./features/priority.js";
-import { attachDueChip } from "./features/due-date.js";
-import { downloadCsv } from "./features/export.js";
+import { createDragController } from "./ui/drag-drop.ts";
+import { closeMenu, installMenuDismissal } from "./ui/menu.ts";
+import { installSettings, renderSettings } from "./features/settings.ts";
+import { attachPriorityTag } from "./features/priority.ts";
+import { attachDueChip } from "./features/due-date.ts";
+import { downloadCsv } from "./features/export.ts";
 
 const listEl = document.getElementById("list");
 const rowTemplate = document.getElementById("row-tpl");

@@ -8,19 +8,32 @@
 // Only one menu is open at a time, which is why the state can live here as
 // module scope rather than being threaded through every caller.
 
-let anchorEl = null;
-let menuEl = null;
+// `priority` is the only entity-shaped field, and it is a number rather than a
+// Priority on purpose: this module must not know what the levels mean. Importing
+// the Priority type here would be the first crack in that -- see CLAUDE.md on
+// the layering rule.
+export interface MenuEntry {
+  label: string;
+  priority?: number | null;
+  checked?: boolean;
+  onPick: () => void;
+}
 
-export function isMenuOpen() {
+let anchorEl: HTMLElement | null = null;
+let menuEl: HTMLElement | null = null;
+
+export function isMenuOpen(): boolean {
   return anchorEl !== null;
 }
 
-export function menuAnchor() {
+export function menuAnchor(): HTMLElement | null {
   return anchorEl;
 }
 
-export function closeMenu() {
-  if (!anchorEl) return;
+export function closeMenu(): void {
+  // One guard for both handles rather than two: they are set and cleared
+  // together in openMenu, and saying so here is what documents that invariant.
+  if (!anchorEl || !menuEl) return;
   anchorEl.setAttribute("aria-expanded", "false");
   anchorEl = null;
   menuEl.hidden = true;
@@ -31,7 +44,12 @@ export function closeMenu() {
 // `priority` is the one entity-shaped hook in an otherwise generic menu: the
 // CSS colours the swatch from .menu-item[data-priority], and that attribute
 // name is a contract with popup.css. Entries without one render no swatch.
-function buildMenuItem({ label, priority = null, checked = false, onPick }) {
+function buildMenuItem({
+  label,
+  priority = null,
+  checked = false,
+  onPick,
+}: MenuEntry): HTMLButtonElement {
   const item = document.createElement("button");
   item.type = "button";
   item.className = "menu-item";
@@ -60,7 +78,7 @@ function buildMenuItem({ label, priority = null, checked = false, onPick }) {
 
 // Anchors the menu to its trigger, flipping above when there is no room below.
 // Fixed positioning so the scrolling list cannot clip it.
-function positionMenu(el, triggerEl) {
+function positionMenu(el: HTMLElement, triggerEl: HTMLElement): void {
   const anchor = triggerEl.getBoundingClientRect();
   const menu = el.getBoundingClientRect();
   const margin = 6;
@@ -73,7 +91,11 @@ function positionMenu(el, triggerEl) {
   el.style.left = `${Math.max(margin, left)}px`;
 }
 
-export function openMenu(el, triggerEl, entries) {
+function menuItems(root: HTMLElement): HTMLElement[] {
+  return [...root.querySelectorAll<HTMLElement>(".menu-item")];
+}
+
+export function openMenu(el: HTMLElement, triggerEl: HTMLElement, entries: MenuEntry[]): void {
   closeMenu();
 
   entries.forEach((entry) => el.append(buildMenuItem(entry)));
@@ -84,13 +106,20 @@ export function openMenu(el, triggerEl, entries) {
   el.hidden = false;
   positionMenu(el, triggerEl);
 
-  const items = [...el.querySelectorAll(".menu-item")];
-  (items.find((item) => item.getAttribute("aria-checked") === "true") || items[0]).focus();
+  const items = menuItems(el);
+  // An empty menu is a caller bug. The untyped version read items[0] off an
+  // empty array and threw on .focus() of undefined; this says what went wrong.
+  const checked = items.find((item) => item.getAttribute("aria-checked") === "true");
+  const focusTarget = checked ?? items[0];
+  if (!focusTarget) {
+    throw new Error("openMenu called with no entries");
+  }
+  focusTarget.focus();
 }
 
 // Clicking a trigger that is already showing its menu closes it, so every
 // caller wiring a trigger wants this rather than openMenu() directly.
-export function toggleMenu(el, triggerEl, entries) {
+export function toggleMenu(el: HTMLElement, triggerEl: HTMLElement, entries: MenuEntry[]): void {
   if (anchorEl === triggerEl) {
     closeMenu();
     return;
@@ -98,15 +127,18 @@ export function toggleMenu(el, triggerEl, entries) {
   openMenu(el, triggerEl, entries);
 }
 
-function moveMenuFocus(step) {
-  const items = [...menuEl.querySelectorAll(".menu-item")];
-  const current = items.indexOf(document.activeElement);
-  items[(current + step + items.length) % items.length].focus();
+function moveMenuFocus(step: number): void {
+  if (!menuEl) return;
+  const items = menuItems(menuEl);
+  if (!items.length) return;
+  const active = document.activeElement;
+  const current = active instanceof HTMLElement ? items.indexOf(active) : -1;
+  items[(current + step + items.length) % items.length]?.focus();
 }
 
 // Escape and the arrow keys, plus click-outside. Wired once at startup so
-// popup.js does not have to carry menu concerns in its event setup.
-export function installMenuDismissal() {
+// popup.ts does not have to carry menu concerns in its event setup.
+export function installMenuDismissal(): void {
   document.addEventListener("keydown", (event) => {
     if (!anchorEl) return;
     if (event.key === "Escape") {
@@ -122,8 +154,10 @@ export function installMenuDismissal() {
     }
   });
   document.addEventListener("pointerdown", (event) => {
-    if (!anchorEl) return;
-    if (menuEl.contains(event.target) || event.target === anchorEl) return;
+    if (!anchorEl || !menuEl) return;
+    const target = event.target;
+    if (target instanceof Node && menuEl.contains(target)) return;
+    if (target === anchorEl) return;
     closeMenu();
   });
 }
