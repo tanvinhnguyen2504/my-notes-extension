@@ -10,11 +10,13 @@ own browser.
 
 ## What you need
 
-- Google Chrome, Microsoft Edge, Brave, Arc, or Firefox
+- Google Chrome, Microsoft Edge, Brave, or Arc
+- [Node.js](https://nodejs.org) 22 or newer
 - A copy of this folder on your computer
 
-There is **no build step** and nothing to install from npm. The folder you
-download is the extension.
+The extension is written in TypeScript and built with [WXT](https://wxt.dev), so
+there **is** a build step. You load the built folder, `.output/chrome-mv3/`, not
+the repository root.
 
 ---
 
@@ -33,14 +35,23 @@ cd my-todo-list-ext
 > folder every time it starts. If you move it to the Trash or rename it later,
 > the extension stops working.
 
-Confirm you can see `manifest.json` in the folder:
+Then install the dependencies and build it:
 
 ```bash
-ls manifest.json
+npm install
+npm run build
 ```
 
-If that prints `manifest.json`, you are in the right place. This is the folder
-you will point the browser at in the next step.
+That writes the extension into `.output/chrome-mv3/`. Confirm it is there:
+
+```bash
+ls .output/chrome-mv3/manifest.json
+```
+
+If that prints the path, you are in the right place. `.output/chrome-mv3/` is the
+folder you will point the browser at in the next step — **not** the repository
+root, which has no `manifest.json` of its own. The manifest is generated from
+`wxt.config.ts` at build time.
 
 ---
 
@@ -53,18 +64,20 @@ you will point the browser at in the next step.
 2. Turn on **Developer mode** using the toggle in the top-right corner.
    Three new buttons appear.
 3. Click **Load unpacked**.
-4. In the file picker, select the folder from Step 1 — the one containing
-   `manifest.json`. Select the *folder itself*, not a file inside it.
+4. In the file picker, select `.output/chrome-mv3/` — the folder containing the
+   generated `manifest.json`. Select the *folder itself*, not a file inside it.
 5. **Checklist** now appears in your extensions list.
 
 ### Firefox
 
-1. Open a new tab and go to `about:debugging#/runtime/this-firefox`.
-2. Click **Load Temporary Add-on…**.
-3. Select the `manifest.json` file from the folder in Step 1.
+`npm run build:firefox` produces `.output/firefox-mv2/`, which you can load via
+`about:debugging#/runtime/this-firefox` → **Load Temporary Add-on…** → the
+`manifest.json` inside that folder.
 
-> Firefox unloads temporary add-ons when you quit the browser. You will need to
-> repeat these three steps each time you restart Firefox.
+> Treat this as unverified. The build succeeds, but the extension targets
+> Chrome: the service worker awaits promise-returning `chrome.alarms` calls,
+> which Firefox exposes under `browser.*` rather than `chrome.*`, so the daily
+> reminder in particular has not been tested there.
 
 ---
 
@@ -149,12 +162,33 @@ If nothing high priority is outstanding at that time, no window opens.
 
 ## Updating after the code changes
 
-If you pull new commits, the browser does not pick them up on its own:
+If you pull new commits, you have to rebuild — the browser is loading
+`.output/chrome-mv3/`, which only changes when you build:
 
-1. Go to `chrome://extensions`.
-2. Find **Checklist** and click the circular **reload** arrow on its card.
+```bash
+npm install   # only if the dependencies changed
+npm run build
+```
 
-In Firefox, click **Reload** on the add-on in `about:debugging`.
+Then go to `chrome://extensions`, find **Checklist**, and click the circular
+**reload** arrow on its card.
+
+### Working on the code
+
+```bash
+npm run dev
+```
+
+This opens a browser with the extension loaded and rebuilds on every save, so
+there is no manual reload step. Two other scripts are worth knowing:
+
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Build, launch a browser, and reload on save |
+| `npm run build` | Build `.output/chrome-mv3/` for loading or shipping |
+| `npm run check` | Type-check everything with `tsc --noEmit` |
+| `npm run verify` | Run the verification scripts in `verify/` |
+| `npm run zip` | Package the build for store submission |
 
 ---
 
@@ -168,8 +202,12 @@ Your saved tasks are deleted along with it.
 ## Troubleshooting
 
 **"Manifest file is missing or unreadable"**
-You selected the wrong folder. Go back to Step 2 and pick the folder that
-directly contains `manifest.json`, not its parent and not a subfolder.
+You selected the wrong folder — most likely the repository root, which has no
+`manifest.json`. Run `npm run build` and select `.output/chrome-mv3/`.
+
+**I pulled new code and nothing changed**
+The browser loads the built folder, not the source. Run `npm run build`, then
+click the reload arrow on the extension's card.
 
 **The icon is not in my toolbar**
 It is installed but not pinned. See Step 3.
@@ -199,25 +237,49 @@ never leave your machine.
 
 ## Project layout
 
-The manifest and the two HTML pages stay at the repo root — that is the folder you
-load in Chrome. Everything else lives under `src/`, grouped by layer: `core` is
-pure logic, `ui` is generic interaction mechanics, `features` are self-contained
-pieces of the list, and the three files at `src/` top level are the entry points.
+Entry points live in `entrypoints/` — that is where WXT looks. Everything else
+lives under `src/`, grouped by layer: `core` is pure logic, `ui` is generic
+interaction mechanics, `features` are self-contained pieces of the list, and
+`popup.ts` / `reminder.ts` are the page scripts.
+
+WXT emits HTML entrypoints **flattened to the output root**, so
+`entrypoints/popup.html` is served as `popup.html` inside the built extension.
+That is what keeps `url: "reminder.html"` in the service worker valid. A page
+added under `src/` instead of `entrypoints/` is simply never built.
 
 | File | What it holds |
 | --- | --- |
-| `manifest.json` | Manifest V3 definition, `storage` and `alarms` permissions |
-| `popup.html` | Popup markup, row and group templates, settings panel |
-| `reminder.html` | The reminder window's page |
+| `wxt.config.ts` | Build config, and the manifest fields the generated `manifest.json` is built from |
+| `tsconfig.json` | Extends WXT's generated config; adds `erasableSyntaxOnly` |
+| `entrypoints/popup.html` | Popup markup, row and group templates, settings panel |
+| `entrypoints/reminder.html` | The reminder window's page |
+| `entrypoints/background.ts` | Service worker: owns the reminder alarm |
+| `src/popup.ts` | DOM rendering and event wiring |
+| `src/reminder.ts` | The daily reminder window's logic |
 | `src/popup.css` | Theme tokens, light/dark via `data-theme` |
-| `src/popup.js` | DOM rendering and event wiring |
-| `src/reminder.js` | The daily reminder window's logic |
-| `src/background.js` | Service worker: owns the reminder alarm |
-| `src/core/utils.js` | Storage, date and grouping logic, with no DOM access |
-| `src/ui/menu.js` | Shared popover mechanics for the row menus |
-| `src/ui/drag-drop.js` | Drag-to-reorder events and drop markers |
-| `src/features/priority.js` | The row's priority pill and its menu |
-| `src/features/due-date.js` | The row's due-date chip and its menu |
-| `src/features/settings.js` | The settings panel and its controls |
-| `src/features/export.js` | CSV export |
-| `icons/` | Toolbar icons at 16 / 32 / 48 / 128 px |
+| `src/core/types.ts` | `Item`, `State`, `Settings`, `Priority` and the other model types |
+| `src/core/utils.ts` | Storage, date and grouping logic, with no DOM access |
+| `src/core/dom.ts` | `el()` and `query()`: element lookups that throw and name what is missing |
+| `src/ui/menu.ts` | Shared popover mechanics for the row menus |
+| `src/ui/drag-drop.ts` | Drag-to-reorder events and drop markers |
+| `src/features/priority.ts` | The row's priority pill and its menu |
+| `src/features/due-date.ts` | The row's due-date chip and its menu |
+| `src/features/settings.ts` | The settings panel and its controls |
+| `src/features/export.ts` | CSV export |
+| `public/icons/` | Toolbar icons at 16 / 32 / 48 / 128 px, copied to the output root |
+| `verify/` | Verification scripts, run by `npm run verify` |
+
+### Verification
+
+There is no test framework. `verify/` holds plain `node` scripts that drive the
+real files and assert with `node:assert`:
+
+```bash
+npm run verify
+```
+
+Node 22+ strips TypeScript types natively, so these run against the `.ts`
+sources with no build step. Each script is a separate `node` process on purpose —
+`src/features/priority.ts` captures its menu element at import time, and module
+caching means a second boot of the popup in one process would drive the first
+boot's DOM with no error.

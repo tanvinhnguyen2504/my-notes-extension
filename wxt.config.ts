@@ -14,7 +14,7 @@ export default defineConfig({
 
   manifest: {
     name: "Checklist",
-    version: "1.0.3",
+    version: "1.0.4",
     description:
       "A quiet todo checklist in your toolbar. Offline, no account, priority flags.",
     permissions: ["storage", "alarms"],
