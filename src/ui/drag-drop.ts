@@ -96,7 +96,9 @@ export function createDragController({
     // dataTransfer is null on a jsdom-synthesised event, and the drag state
     // above still has to be set for the rest of the gesture to work -- so the
     // guard sits here rather than at the top of the function.
-    if (!event.dataTransfer) return;
+    if (!event.dataTransfer) {
+      return;
+    }
     event.dataTransfer.effectAllowed = "move";
     // Firefox ignores a drag that carries no payload.
     event.dataTransfer.setData("text/plain", String(index));
@@ -118,7 +120,9 @@ export function createDragController({
   }
 
   function hoverRow(event: DragEvent, row: HTMLElement, index: number): void {
-    if (draggedIndex === null || draggedIndex === index) return;
+    if (draggedIndex === null || draggedIndex === index) {
+      return;
+    }
     acceptHover(event);
     showRowMarker(row, dropSide(row, event.clientY));
   }
@@ -129,7 +133,9 @@ export function createDragController({
     index: number,
     dayKey: DayKey | null
   ): void {
-    if (draggedIndex === null) return;
+    if (draggedIndex === null) {
+      return;
+    }
     event.preventDefault();
 
     // Read the side back off the marker rather than recomputing it: drop fires
@@ -143,13 +149,17 @@ export function createDragController({
   }
 
   function hoverGroup(event: DragEvent, head: HTMLElement): void {
-    if (draggedIndex === null) return;
+    if (draggedIndex === null) {
+      return;
+    }
     acceptHover(event);
     head.classList.add(CLASS.DROP_INTO);
   }
 
   function dropOnGroup(event: DragEvent, dayKey: DayKey | null): void {
-    if (draggedIndex === null) return;
+    if (draggedIndex === null) {
+      return;
+    }
     event.preventDefault();
 
     const from = draggedIndex;

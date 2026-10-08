@@ -33,7 +33,9 @@ export function menuAnchor(): HTMLElement | null {
 export function closeMenu(): void {
   // One guard for both handles rather than two: they are set and cleared
   // together in openMenu, and saying so here is what documents that invariant.
-  if (!anchorEl || !menuEl) return;
+  if (!anchorEl || !menuEl) {
+    return;
+  }
   anchorEl.setAttribute("aria-expanded", "false");
   anchorEl = null;
   menuEl.hidden = true;
@@ -128,9 +130,13 @@ export function toggleMenu(el: HTMLElement, triggerEl: HTMLElement, entries: Men
 }
 
 function moveMenuFocus(step: number): void {
-  if (!menuEl) return;
+  if (!menuEl) {
+    return;
+  }
   const items = menuItems(menuEl);
-  if (!items.length) return;
+  if (!items.length) {
+    return;
+  }
   const active = document.activeElement;
   const current = active instanceof HTMLElement ? items.indexOf(active) : -1;
   items[(current + step + items.length) % items.length]?.focus();
@@ -140,7 +146,9 @@ function moveMenuFocus(step: number): void {
 // popup.ts does not have to carry menu concerns in its event setup.
 export function installMenuDismissal(): void {
   document.addEventListener("keydown", (event) => {
-    if (!anchorEl) return;
+    if (!anchorEl) {
+      return;
+    }
     if (event.key === "Escape") {
       const triggerEl = anchorEl;
       closeMenu();
@@ -154,10 +162,16 @@ export function installMenuDismissal(): void {
     }
   });
   document.addEventListener("pointerdown", (event) => {
-    if (!anchorEl || !menuEl) return;
+    if (!anchorEl || !menuEl) {
+      return;
+    }
     const target = event.target;
-    if (target instanceof Node && menuEl.contains(target)) return;
-    if (target === anchorEl) return;
+    if (target instanceof Node && menuEl.contains(target)) {
+      return;
+    }
+    if (target === anchorEl) {
+      return;
+    }
     closeMenu();
   });
 }

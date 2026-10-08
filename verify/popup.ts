@@ -8,7 +8,9 @@ const doc = dom.window.document;
 
 const $ = <T extends Element = HTMLElement>(sel: string): T => {
   const found = doc.querySelector<T>(sel);
-  if (!found) throw new Error(`verify: no ${sel}`);
+  if (!found) {
+    throw new Error(`verify: no ${sel}`);
+  }
   return found;
 };
 const rows = () => [...doc.querySelectorAll(".row")];

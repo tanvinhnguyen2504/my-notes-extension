@@ -59,7 +59,9 @@ function renderRow(item: Item): HTMLElement {
   // anything not explicitly excluded, which is a trap this page simply avoids by
   // wiring the checkbox and nothing else.
   box.addEventListener("click", () => {
-    if (!state) return;
+    if (!state) {
+      return;
+    }
     item.done = true;
     touchItem(item);
     saveState(state);

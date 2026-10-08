@@ -1,5 +1,5 @@
-.claudeplans
 node_modules/
 .output/
 .wxt/
 stats.html
+.claude

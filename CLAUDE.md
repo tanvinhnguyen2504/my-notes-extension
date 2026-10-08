@@ -18,6 +18,12 @@ path strings working — `url: "reminder.html"` in `entrypoints/background.ts`, 
 from anything written by hand. A page added under `src/` instead of
 `entrypoints/` is silently never emitted at all.
 
+## Git
+
+Never commit, push, or tag without being asked explicitly. Full rule:
+
+@.claude/rules/commit.md
+
 ## Layout
 
 The source sits under `src/`, laid out by layer: `core` ← `ui` ← `features` ←
@@ -161,6 +167,19 @@ list position, not the item.
 - The CSS keys off `data-priority`, `data-done`, and `data-key` on rows and
   groups. **These attribute names are a contract with `popup.css`** — renaming
   one in JS alone silently breaks the styling with no error anywhere.
+- Guard bodies are always braced. No `if (cond) return;` on one line, even
+  where a single-line guard would read fine.
+
+## TypeScript style
+
+The house TypeScript rules live in their own file and are imported here, so
+there is one copy to edit:
+
+@.claude/rules/typescript.md
+
+In short: explicit `return`, block bodies, multi-line functions, and no
+compressing logic to save lines — including inside `map` / `filter` / `reduce`
+callbacks, which stay inline but still take a block body.
 
 ## Traps this codebase has already hit
 

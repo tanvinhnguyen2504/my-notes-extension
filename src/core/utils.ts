@@ -134,12 +134,16 @@ export function normalizeState(saved: unknown): State {
 // "!buy milk" -> a high-priority item. Returns null for empty input.
 export function parseDraft(rawText: string): Item | null {
   const trimmed = rawText.trim();
-  if (!trimmed) return null;
+  if (!trimmed) {
+    return null;
+  }
 
   const { text: withoutDay, dueDate } = extractDayToken(trimmed);
   const isHighPriority = withoutDay.startsWith("!");
   const text = (isHighPriority ? withoutDay.slice(1) : withoutDay).trim();
-  if (!text) return null;
+  if (!text) {
+    return null;
+  }
 
   return {
     text,
@@ -230,7 +234,9 @@ export function debounce<A extends unknown[]>(
     timer = setTimeout(() => {
       timer = null;
     }, wait);
-    if (isIdle) fn(...args);
+    if (isIdle) {
+      fn(...args);
+    }
   };
 }
 
@@ -354,7 +360,9 @@ export function shiftDayKey(key: DayKey, days: number): DayKey {
 }
 
 export function formatDayKey(key: string): string {
-  if (!isDayKey(key)) return "";
+  if (!isDayKey(key)) {
+    return "";
+  }
   // isDayKey has already matched /^\d{4}-\d{2}-\d{2}$/, so all three parts
   // exist; the defaults are unreachable and only satisfy the compiler.
   const [year = "", month = "", day = ""] = key.split("-");
@@ -364,7 +372,9 @@ export function formatDayKey(key: string): string {
 // Row-width version of formatDayKey: the year is almost always the current one
 // and the row has no space to spend restating it.
 export function formatDayKeyShort(key: string): string {
-  if (!isDayKey(key)) return "";
+  if (!isDayKey(key)) {
+    return "";
+  }
   const [, month = "", day = ""] = key.split("-");
   return `${day}/${month}`;
 }
@@ -375,43 +385,71 @@ export function dayGroupLabel(
   key: DayKey | null,
   reference: DayKey = todayKey()
 ): DayGroupLabel {
-  if (!isDayKey(key)) return "UNSCHEDULED";
-  if (key === reference) return "TODAY";
-  if (key === shiftDayKey(reference, 1)) return "TOMORROW";
-  if (key === shiftDayKey(reference, -1)) return "YESTERDAY";
+  if (!isDayKey(key)) {
+    return "UNSCHEDULED";
+  }
+  if (key === reference) {
+    return "TODAY";
+  }
+  if (key === shiftDayKey(reference, 1)) {
+    return "TOMORROW";
+  }
+  if (key === shiftDayKey(reference, -1)) {
+    return "YESTERDAY";
+  }
   return key < reference ? "OVERDUE" : "UPCOMING";
 }
 
 // Accepts "today", "tomorrow", "yesterday", "DD/MM" and "DD/MM/YYYY".
 export function parseDayInput(value: unknown): DayKey | null {
   const text = String(value).trim().toLowerCase();
-  if (!text) return null;
-  if (text === "today") return todayKey();
-  if (text === "tomorrow") return shiftDayKey(todayKey(), 1);
-  if (text === "yesterday") return shiftDayKey(todayKey(), -1);
-  if (matchesDayKey(text)) return text;
+  if (!text) {
+    return null;
+  }
+  if (text === "today") {
+    return todayKey();
+  }
+  if (text === "tomorrow") {
+    return shiftDayKey(todayKey(), 1);
+  }
+  if (text === "yesterday") {
+    return shiftDayKey(todayKey(), -1);
+  }
+  if (matchesDayKey(text)) {
+    return text;
+  }
 
   const parts = text.split(/[/.-]/);
-  if (parts.length < 2 || parts.length > 3) return null;
+  if (parts.length < 2 || parts.length > 3) {
+    return null;
+  }
 
   const day = Number(parts[0]);
   const month = Number(parts[1]);
   const year = parts.length === 3 ? Number(parts[2]) : new Date().getFullYear();
-  if (!day || !month || !year || month > 12 || day > 31) return null;
+  if (!day || !month || !year || month > 12 || day > 31) {
+    return null;
+  }
 
   const date = new Date(year, month - 1, day);
   // Rejects impossible dates like 31/02, which Date silently rolls forward.
-  if (date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+  if (date.getMonth() !== month - 1 || date.getDate() !== day) {
+    return null;
+  }
   return toDayKey(date);
 }
 
 // Pulls an "@day" token out of the draft text, returning the text without it.
 export function extractDayToken(text: string): { text: string; dueDate: DayKey | null } {
   const match = text.match(DAY_TOKEN_PATTERN);
-  if (!match) return { text, dueDate: null };
+  if (!match) {
+    return { text, dueDate: null };
+  }
 
   const dueDate = parseDayInput(match[1]);
-  if (!dueDate) return { text, dueDate: null };
+  if (!dueDate) {
+    return { text, dueDate: null };
+  }
   return { text: text.replace(match[0], " ").replace(/\s+/g, " ").trim(), dueDate };
 }
 
@@ -421,8 +459,12 @@ export function extractDayToken(text: string): { text: string; dueDate: DayKey |
 const RANK = { TODAY: 0, OVERDUE: 1, UPCOMING: 2, UNSCHEDULED: 3 } as const;
 
 function groupRank(key: string, reference: DayKey): number {
-  if (!key) return RANK.UNSCHEDULED;
-  if (key === reference) return RANK.TODAY;
+  if (!key) {
+    return RANK.UNSCHEDULED;
+  }
+  if (key === reference) {
+    return RANK.TODAY;
+  }
   return key < reference ? RANK.OVERDUE : RANK.UPCOMING;
 }
 
@@ -451,8 +493,12 @@ export function groupByDay(items: Item[], reference: DayKey = todayKey()): DayGr
     }))
     .sort((a, b) => {
       const byRank = groupRank(a.key, reference) - groupRank(b.key, reference);
-      if (byRank !== 0) return byRank;
-      if (a.key === b.key) return 0;
+      if (byRank !== 0) {
+        return byRank;
+      }
+      if (a.key === b.key) {
+        return 0;
+      }
       // Soonest first, except inside OVERDUE where the most recently missed day
       // is the one you are most likely to still act on.
       const ascending = a.key < b.key ? -1 : 1;

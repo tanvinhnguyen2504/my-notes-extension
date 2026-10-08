@@ -68,11 +68,15 @@ function cloneTemplate(template: HTMLTemplateElement): HTMLElement {
 // the gap between mousedown and click is however long the user holds the
 // button, which no timeout can bound.
 function consumeEditorDismissal(event: MouseEvent): boolean {
-  if (!editorDismissedBy) return false;
+  if (!editorDismissedBy) {
+    return false;
+  }
   const pressedEl = editorDismissedBy;
   editorDismissedBy = null;
   const target = event.target;
-  if (target === pressedEl) return true;
+  if (target === pressedEl) {
+    return true;
+  }
   return target instanceof Node && target.contains(pressedEl);
 }
 
@@ -190,8 +194,12 @@ function assignDay(index: number, dayKey: DayKey | null): void {
   // Under noUncheckedIndexedAccess an out-of-range index reads as undefined.
   // It should not be reachable -- every index comes from a rendered row -- but
   // returning beats the TypeError the untyped version would have thrown.
-  if (!item) return;
-  if ((item.dueDate || null) === dayKey) return;
+  if (!item) {
+    return;
+  }
+  if ((item.dueDate || null) === dayKey) {
+    return;
+  }
   touchItem(item).dueDate = dayKey;
 }
 
@@ -240,7 +248,9 @@ function startEditing(row: HTMLElement, item: Item): void {
 
   let settled = false;
   const settle = (commit: boolean) => {
-    if (settled) return;
+    if (settled) {
+      return;
+    }
     settled = true;
     document.removeEventListener("mousedown", notePress, true);
 
@@ -259,7 +269,9 @@ function startEditing(row: HTMLElement, item: Item): void {
     if (event.key === "Enter") {
       settle(true);
     }
-    else if (event.key === "Escape") {
+    else {
+      if (event.key === "Escape") {
+    }
       settle(false);
     }
   });
@@ -307,7 +319,9 @@ function saveAndRender(): void {
 
 function addItem(): void {
   const item = parseDraft(draftEl.value);
-  if (!item) return;
+  if (!item) {
+    return;
+  }
 
   state.items.push(item);
   draftEl.value = "";

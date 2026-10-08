@@ -34,6 +34,10 @@ function openDatePicker(inputEl: HTMLInputElement): void {
   closeMenu();
   // Checked rather than called outright: showPicker is recent enough that an
   // older browser would throw, and focus() is the graceful fallback.
-  if (typeof inputEl.showPicker === "function") inputEl.showPicker();
-  else inputEl.focus();
+  if (typeof inputEl.showPicker === "function") {
+    inputEl.showPicker();
+  }
+  else {
+    inputEl.focus();
+  }
 }

@@ -42,7 +42,9 @@ export function closeSettings(): void {
 }
 
 function toggleSettings(): void {
-  if (!controls) return;
+  if (!controls) {
+    return;
+  }
   const opening = controls.panel.hidden;
   controls.panel.hidden = !opening;
   controls.trigger.setAttribute("aria-expanded", String(opening));
@@ -54,7 +56,9 @@ function toggleSettings(): void {
 // Syncs the controls from state. Called on every render, because a preference can
 // change from somewhere other than its own switch.
 export function renderSettings(state: State): void {
-  if (!controls) return;
+  if (!controls) {
+    return;
+  }
   controls.theme.setAttribute("aria-checked", String(state.theme === THEME.DARK));
   controls.width.setAttribute("aria-checked", String(state.settings.width === WIDTH.WIDE));
 
@@ -100,7 +104,9 @@ export function installSettings({
   // The menu installs its own Escape handler and returns early when no menu is
   // open, so the two do not fight over the key.
   document.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape" || !isSettingsOpen()) return;
+    if (event.key !== "Escape" || !isSettingsOpen()) {
+      return;
+    }
     closeSettings();
     trigger.focus();
   });
