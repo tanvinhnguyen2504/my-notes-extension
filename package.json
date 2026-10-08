@@ -1,0 +1,19 @@
+{
+  "name": "my-todo-list-ext",
+  "description": "A quiet todo checklist in your toolbar. Offline, no account, priority flags.",
+  "private": true,
+  "version": "1.0.3",
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "build": "wxt build",
+    "zip": "wxt zip",
+    "check": "tsc --noEmit",
+    "postinstall": "wxt prepare"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.3.4",
+    "typescript": "^5.9.3",
+    "wxt": "^0.21.4"
+  }
+}

@@ -1,4 +1,5 @@
-import { getHighPriorityItems, loadState, nextReminderTime } from "./core/utils.js";
+import { defineBackground } from "wxt/utils/define-background";
+import { getHighPriorityItems, loadState, nextReminderTime } from "../src/core/utils.js";
 
 const ALARM_NAME = "reminder.daily";
 const DAY_IN_MINUTES = 1440;
@@ -52,29 +53,39 @@ async function openReminderWindow() {
   });
 }
 
-chrome.alarms.onAlarm.addListener(async (alarm) => {
-  if (alarm.name !== ALARM_NAME) {
-    return;
-  }
+// WXT imports this module at build time to read the options, so nothing may
+// touch `chrome` at the top level. main() runs synchronously on every worker
+// startup, which is what keeps the listeners registered early enough for an
+// idle-terminated worker to be woken for their events -- so nothing in here may
+// sit behind an `await` either.
+export default defineBackground({
+  type: "module",
+  main() {
+    chrome.alarms.onAlarm.addListener(async (alarm) => {
+      if (alarm.name !== ALARM_NAME) {
+        return;
+      }
 
-  const state = await loadState();
-  // Re-checked rather than trusted: the alarm may outlive the setting being
-  // switched off, if the worker was asleep when that happened.
-  if (!state.settings.reminder.enabled) {
-    return;
-  }
-  // An empty reminder is pure interruption, so there is nothing to show.
-  if (!getHighPriorityItems(state.items).length) {
-    return;
-  }
+      const state = await loadState();
+      // Re-checked rather than trusted: the alarm may outlive the setting being
+      // switched off, if the worker was asleep when that happened.
+      if (!state.settings.reminder.enabled) {
+        return;
+      }
+      // An empty reminder is pure interruption, so there is nothing to show.
+      if (!getHighPriorityItems(state.items).length) {
+        return;
+      }
 
-  await openReminderWindow();
-});
+      await openReminderWindow();
+    });
 
-chrome.runtime.onInstalled.addListener(syncAlarm);
-chrome.runtime.onStartup.addListener(syncAlarm);
-chrome.storage.onChanged.addListener((_, area) => {
-  if (area === "local") {
-    syncAlarm();
-  }
+    chrome.runtime.onInstalled.addListener(syncAlarm);
+    chrome.runtime.onStartup.addListener(syncAlarm);
+    chrome.storage.onChanged.addListener((_, area) => {
+      if (area === "local") {
+        syncAlarm();
+      }
+    });
+  },
 });
