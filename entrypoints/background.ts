@@ -7,7 +7,7 @@ const WINDOW_WIDTH = 440;
 const WINDOW_HEIGHT = 520;
 
 // Creates, updates, or clears the alarm to match the saved setting.
-async function syncAlarm() {
+async function syncAlarm(): Promise<void> {
   const state = await loadState();
   const { enabled, time } = state.settings.reminder;
   const existing = await chrome.alarms.get(ALARM_NAME);
@@ -32,18 +32,30 @@ async function syncAlarm() {
 
 // Centred on whichever browser window the user was last in, which is what makes
 // this read as a dialog rather than as a stray window.
-async function openReminderWindow() {
-  const position = {};
+async function openReminderWindow(): Promise<void> {
+  const position: { left?: number; top?: number } = {};
   try {
     const { left, top, width, height } = await chrome.windows.getLastFocused();
-    position.left = Math.round(left + (width - WINDOW_WIDTH) / 2);
-    position.top = Math.round(top + (height - WINDOW_HEIGHT) / 2);
+    // All four are optional in the chrome types, and a window genuinely can
+    // report none of them. Centre only when the whole rect is known; otherwise
+    // fall through to letting the browser place it, as below.
+    if (
+      left !== undefined &&
+      top !== undefined &&
+      width !== undefined &&
+      height !== undefined
+    ) {
+      position.left = Math.round(left + (width - WINDOW_WIDTH) / 2);
+      position.top = Math.round(top + (height - WINDOW_HEIGHT) / 2);
+    }
   } catch (_) {
     // getLastFocused rejects when no window is open. Let the browser place it
     // rather than throwing in a worker where the error would go unseen.
   }
 
   await chrome.windows.create({
+    // Resolved against the extension root, where WXT emits every HTML
+    // entrypoint flattened -- entrypoints/reminder.html becomes reminder.html.
     url: "reminder.html",
     type: "popup",
     focused: true,

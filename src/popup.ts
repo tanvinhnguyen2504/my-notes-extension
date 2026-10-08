@@ -1,3 +1,5 @@
+import { el, query } from "./core/dom.ts";
+import type { DayGroup, DayKey, Item } from "./core/types.ts";
 import {
   STORAGE_KEY,
   countDone,
@@ -24,18 +26,18 @@ import { attachPriorityTag } from "./features/priority.ts";
 import { attachDueChip } from "./features/due-date.ts";
 import { downloadCsv } from "./features/export.ts";
 
-const listEl = document.getElementById("list");
-const rowTemplate = document.getElementById("row-tpl");
-const countEl = document.getElementById("count");
-const progressEl = document.getElementById("progress");
-const draftEl = document.getElementById("draft");
-const settingsPanelEl = document.getElementById("settings-panel");
-const settingsButtonEl = document.getElementById("btn-settings");
-const checkAllButtonEl = document.getElementById("btn-check-all");
-const clearAllButtonEl = document.getElementById("btn-clear-all");
-const exportButtonEl = document.getElementById("btn-export-csv");
-const addButton = document.getElementById("add");
-const groupTemplate = document.getElementById("group-tpl");
+const listEl = el("list");
+const rowTemplate = el<HTMLTemplateElement>("row-tpl");
+const countEl = el("count");
+const progressEl = el("progress");
+const draftEl = el<HTMLInputElement>("draft");
+const settingsPanelEl = el("settings-panel");
+const settingsButtonEl = el<HTMLButtonElement>("btn-settings");
+const checkAllButtonEl = el<HTMLButtonElement>("btn-check-all");
+const clearAllButtonEl = el<HTMLButtonElement>("btn-clear-all");
+const exportButtonEl = el<HTMLButtonElement>("btn-export-csv");
+const addButton = el<HTMLButtonElement>("add");
+const groupTemplate = el<HTMLTemplateElement>("group-tpl");
 
 const CLEAR_CONFIRM_MS = 3000;
 
@@ -43,25 +45,38 @@ const CLEAR_CONFIRM_MS = 3000;
 // so every field the renderers read exists from the first frame.
 let state = normalizeState(null);
 let clearArmed = false;
-let clearTimer = null;
+let clearTimer: ReturnType<typeof setTimeout> | null = null;
 // The pointer press that dismisses an open editor also completes as a click,
 // and that click lands on .body -- which would toggle the row off the back of
 // a gesture the user meant as "close the editor". Holds the element that press
 // landed on, so the click it produces can be ignored exactly once.
-let editorDismissedBy = null;
+let editorDismissedBy: Node | null = null;
+
+// Every row is rebuilt from the template on each render, so the root has to be
+// re-derived rather than cached. Checked rather than asserted: an emptied
+// <template> in popup.html is otherwise a blank list with no error.
+function cloneTemplate(template: HTMLTemplateElement): HTMLElement {
+  const clone = template.content.firstElementChild?.cloneNode(true);
+  if (!(clone instanceof HTMLElement)) {
+    throw new Error(`template #${template.id} has no element to clone`);
+  }
+  return clone;
+}
 
 // True when `event` is the click completing the press that just dismissed an
 // editor. Matching on the pressed element rather than on a timer is deliberate:
 // the gap between mousedown and click is however long the user holds the
 // button, which no timeout can bound.
-function consumeEditorDismissal(event) {
+function consumeEditorDismissal(event: MouseEvent): boolean {
   if (!editorDismissedBy) return false;
   const pressedEl = editorDismissedBy;
   editorDismissedBy = null;
-  return event.target === pressedEl || event.target.contains(pressedEl);
+  const target = event.target;
+  if (target === pressedEl) return true;
+  return target instanceof Node && target.contains(pressedEl);
 }
 
-function renderEmptyState() {
+function renderEmptyState(): void {
   const empty = document.createElement("div");
   empty.className = "empty";
 
@@ -78,19 +93,19 @@ function renderEmptyState() {
 // Controls inside .body that must not fall through to the done-toggle below.
 const BODY_CONTROLS = ".del, .text, .tag, .due";
 
-function renderRow(item, index, dayKey) {
-  const row = rowTemplate.content.firstElementChild.cloneNode(true);
+function renderRow(item: Item, index: number, dayKey: DayKey | null): HTMLElement {
+  const row = cloneTemplate(rowTemplate);
   row.dataset.priority = String(item.priority);
   row.dataset.done = String(item.done);
-  row.querySelector(".box").textContent = item.done ? "✓" : "";
+  query(row, ".box").textContent = item.done ? "✓" : "";
 
-  const textEl = row.querySelector(".text");
+  const textEl = query(row, ".text");
   textEl.textContent = item.text;
   // The label is a single ellipsised line, so the full text is only ever
   // readable from the tooltip.
   textEl.title = item.text;
 
-  attachPriorityTag(row.querySelector(".tag"), item, (priority) => {
+  attachPriorityTag(query(row, ".tag"), item, (priority) => {
     touchItem(item).priority = priority;
     // Mutate, stamp, sort, re-render -- in that order. The resort invalidates the
     // `index` every row handler closed over, and saveAndRender() is what rebuilds
@@ -99,19 +114,25 @@ function renderRow(item, index, dayKey) {
     state.items = sortByPriority(state.items);
     saveAndRender();
   });
-  attachDueChip(row.querySelector(".due"), row.querySelector(".due-input"), item, (dayKey) => {
-    assignDay(index, dayKey);
-    saveAndRender();
-  });
+  attachDueChip(
+    query(row, ".due"),
+    query<HTMLInputElement>(row, ".due-input"),
+    item,
+    (dayKey) => {
+      assignDay(index, dayKey);
+      saveAndRender();
+    }
+  );
 
-  row.querySelector(".body").addEventListener("click", (event) => {
+  query(row, ".body").addEventListener("click", (event) => {
     if (consumeEditorDismissal(event)) {
       return;
     }
     // The text label is the edit target (double-click); toggling it here would
     // re-render the row before dblclick could fire. The rest are controls with
     // their own handlers.
-    if (event.target.closest(BODY_CONTROLS)) {
+    const target = event.target;
+    if (target instanceof Element && target.closest(BODY_CONTROLS)) {
       return;
     }
     item.done = !item.done;
@@ -122,7 +143,7 @@ function renderRow(item, index, dayKey) {
     startEditing(row, item);
   });
 
-  row.querySelector(".del").addEventListener("click", () => {
+  query(row, ".del").addEventListener("click", () => {
     state.items.splice(index, 1);
     saveAndRender();
   });
@@ -131,15 +152,15 @@ function renderRow(item, index, dayKey) {
   return row;
 }
 
-function renderGroup(group) {
-  const section = groupTemplate.content.firstElementChild.cloneNode(true);
+function renderGroup(group: DayGroup): void {
+  const section = cloneTemplate(groupTemplate);
   section.dataset.key = group.key;
   section.dataset.overdue = String(!!group.key && group.key < todayKey());
 
-  const head = section.querySelector(".group-head");
-  head.querySelector(".group-label").textContent = group.label;
-  head.querySelector(".group-date").textContent = group.date;
-  head.querySelector(".group-count").textContent = `${group.done}/${group.entries.length}`;
+  const head = query(section, ".group-head");
+  query(head, ".group-label").textContent = group.label;
+  query(head, ".group-date").textContent = group.date;
+  query(head, ".group-count").textContent = `${group.done}/${group.entries.length}`;
   dragController.attachGroupHeader(head, group.key || null);
 
   group.entries.forEach(({ item, index }) =>
@@ -148,7 +169,7 @@ function renderGroup(group) {
   listEl.append(section);
 }
 
-// Drag and drop lives in drag-drop.js; these two callbacks are the only places
+// Drag and drop lives in drag-drop.ts; these two callbacks are the only places
 // a completed drop is allowed to touch the list.
 const dragController = createDragController({
   listEl,
@@ -164,25 +185,29 @@ const dragController = createDragController({
 });
 
 // A drop into another day's group is a reassignment, not just a reorder.
-function assignDay(index, dayKey) {
+function assignDay(index: number, dayKey: DayKey | null): void {
   const item = state.items[index];
+  // Under noUncheckedIndexedAccess an out-of-range index reads as undefined.
+  // It should not be reachable -- every index comes from a rendered row -- but
+  // returning beats the TypeError the untyped version would have thrown.
+  if (!item) return;
   if ((item.dueDate || null) === dayKey) return;
   touchItem(item).dueDate = dayKey;
 }
 
-function disarmClear() {
-  clearTimeout(clearTimer);
+function disarmClear(): void {
+  clearTimeout(clearTimer ?? undefined);
   clearTimer = null;
   clearArmed = false;
 }
 
-function renderActions() {
+function renderActions(): void {
   const isEmpty = !state.items.length;
   // One button, two directions: once everything is ticked the only useful move
   // is to untick it, so the button flips rather than going dead.
   const allDone = isAllDone(state.items);
   checkAllButtonEl.disabled = isEmpty;
-  checkAllButtonEl.textContent = allDone ? "\u2715 UNMARK ALL" : "\u2713 MARK ALL";
+  checkAllButtonEl.textContent = allDone ? "✕ UNMARK ALL" : "✓ MARK ALL";
   checkAllButtonEl.title = allDone ? "Clear every tick" : "Mark everything done";
   checkAllButtonEl.dataset.allDone = String(allDone);
   clearAllButtonEl.disabled = isEmpty;
@@ -193,8 +218,8 @@ function renderActions() {
 
 // Swaps the label for an input in place. Commits on Enter or blur, reverts on
 // Escape, and treats an emptied field as a cancel rather than a delete.
-function startEditing(row, item) {
-  const textEl = row.querySelector(".text");
+function startEditing(row: HTMLElement, item: Item): void {
+  const textEl = query(row, ".text");
   const input = document.createElement("input");
   input.type = "text";
   input.className = "edit";
@@ -205,15 +230,16 @@ function startEditing(row, item) {
 
   // Capture phase, so this runs before the press's default action moves focus
   // and blurs the input -- i.e. before settle() below.
-  const notePress = (event) => {
-    if (!input.contains(event.target)) {
-      editorDismissedBy = event.target;
+  const notePress = (event: MouseEvent) => {
+    const target = event.target;
+    if (target instanceof Node && !input.contains(target)) {
+      editorDismissedBy = target;
     }
   };
   document.addEventListener("mousedown", notePress, true);
 
   let settled = false;
-  const settle = (commit) => {
+  const settle = (commit: boolean) => {
     if (settled) return;
     settled = true;
     document.removeEventListener("mousedown", notePress, true);
@@ -248,18 +274,18 @@ function startEditing(row, item) {
 
 // Both appearance preferences are attributes on <html>, which is a contract with
 // popup.css -- renaming one here breaks the styling with no error anywhere.
-function applyAppearance() {
+function applyAppearance(): void {
   document.documentElement.dataset.theme = state.theme;
   document.documentElement.dataset.width = state.settings.width;
 }
 
-function renderProgress() {
+function renderProgress(): void {
   countEl.textContent = `${countDone(state.items)} of ${state.items.length}`;
   progressEl.style.width = `${progressPercent(state.items)}%`;
 
 }
 
-function render() {
+function render(): void {
   applyAppearance()
   renderProgress()
   renderActions()
@@ -274,12 +300,12 @@ function render() {
   groupByDay(state.items).forEach(renderGroup);
 }
 
-function saveAndRender() {
+function saveAndRender(): void {
   saveState(state);
   render();
 }
 
-function addItem() {
+function addItem(): void {
   const item = parseDraft(draftEl.value);
   if (!item) return;
 
@@ -289,7 +315,7 @@ function addItem() {
   saveAndRender();
 }
 
-function handleEventListener() {
+function handleEventListener(): void {
   addButton.addEventListener("click", addItem);
   draftEl.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
@@ -359,10 +385,11 @@ installSettings({
 // undone by the popup's next save.
 if (typeof chrome !== "undefined" && chrome.storage && chrome.storage.onChanged) {
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area !== "local" || !changes[STORAGE_KEY]) {
+    const change = changes[STORAGE_KEY];
+    if (area !== "local" || !change) {
       return;
     }
-    const incoming = normalizeState(changes[STORAGE_KEY].newValue);
+    const incoming = normalizeState(change.newValue);
     // Fires for this popup's own writes too. Re-rendering then would destroy an
     // open inline editor for nothing, so act only on a real difference.
     if (JSON.stringify(incoming) === JSON.stringify(state)) {

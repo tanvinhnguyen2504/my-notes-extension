@@ -1,5 +1,13 @@
+// The reminder window's page.
+//
+// It never imports popup.ts: popup.ts calls getElementById at module top level
+// and runs its wiring on load, so it throws on any page without the popup's
+// ids. This page shares utils.ts and popup.css and duplicates the few lines it
+// needs to draw a row.
+
+import { el } from "./core/dom.ts";
+import type { Item, State } from "./core/types.ts";
 import {
-  PRIORITY,
   PRIORITY_LABELS,
   formatDayKeyShort,
   loadState,
@@ -8,14 +16,13 @@ import {
   sortByPriority,
 } from "./core/utils.ts";
 
+const listEl = el("reminder-list");
+const countEl = el("reminder-count");
+const dismissButtonEl = el<HTMLButtonElement>("btn-dismiss");
 
-const listEl = document.getElementById("reminder-list");
-const countEl = document.getElementById("reminder-count");
-const dismissButtonEl = document.getElementById("btn-dismiss");
+let state: State | null = null;
 
-let state = null;
-
-function renderRow(item) {
+function renderRow(item: Item): HTMLElement {
   const row = document.createElement("div");
   row.className = "row";
   row.dataset.priority = String(item.priority);
@@ -52,6 +59,7 @@ function renderRow(item) {
   // anything not explicitly excluded, which is a trap this page simply avoids by
   // wiring the checkbox and nothing else.
   box.addEventListener("click", () => {
+    if (!state) return;
     item.done = true;
     touchItem(item);
     saveState(state);
@@ -62,7 +70,7 @@ function renderRow(item) {
   return row;
 }
 
-function renderAllClear() {
+function renderAllClear(): void {
   const empty = document.createElement("div");
   empty.className = "empty";
 
@@ -76,12 +84,16 @@ function renderAllClear() {
   listEl.append(empty);
 }
 
-function render() {
-  document.documentElement.dataset.theme = state.theme;
-
-  if (!state || !state.items) {
+function render(): void {
+  // Moved above the theme read, which used to come first: `state` starts null,
+  // so the original order would have thrown had render() ever run before
+  // loadState() resolved. The `!state.items` half of the old check is gone --
+  // State guarantees an array, and normalizeState() is what makes that true.
+  if (!state) {
     return
   }
+
+  document.documentElement.dataset.theme = state.theme;
 
   const unDoneItems = state.items.filter(item => !item.done)
 

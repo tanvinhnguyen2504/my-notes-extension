@@ -1,8 +1,9 @@
 {
   "extends": "./.wxt/tsconfig.json",
   "compilerOptions": {
-    "allowJs": true,
-    "checkJs": false,
+    // Non-erasable syntax (enum, namespace, parameter properties) compiles under
+    // WXT but crashes under plain `node verify/*.ts`, which is how this repo is
+    // verified. This flag makes that a compile error instead.
     "erasableSyntaxOnly": true
   }
 }
