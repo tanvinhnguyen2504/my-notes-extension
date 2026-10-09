@@ -1,4 +1,5 @@
-import { defineConfig } from "wxt";
+import { defineConfig } from 'wxt';
+import tailwindcss from '@tailwindcss/vite';
 
 // Generates the manifest from this file plus entrypoints/. HTML entrypoints are
 // emitted flattened to the output root, which keeps `url: "reminder.html"` and
@@ -8,12 +9,15 @@ export default defineConfig({
   // codebase you cannot grep for.
   imports: false,
 
+  modules: ['@wxt-dev/module-react'],
+
+  vite: () => ({ plugins: [tailwindcss()] }),
+
   manifest: {
-    name: "Checklist",
-    version: "1.0.4",
-    description:
-      "A quiet todo checklist in your toolbar. Offline, no account, priority flags.",
-    permissions: ["storage", "alarms"],
+    name: 'Tasks',
+    version: '1.1.0',
+    description: 'A small extensions improve quality working for developer',
+    permissions: ['storage', 'alarms'],
     // WXT derives `icons` only from public/icon/{size}.png and never emits
     // default_icon, so both are declared rather than renaming the files.
     icons: {
@@ -23,7 +27,7 @@ export default defineConfig({
       128: "icons/icon128.png",
     },
     action: {
-      default_title: "Checklist",
+      default_title: 'Tasks',
       default_icon: {
         16: "icons/icon16.png",
         32: "icons/icon32.png",

@@ -3,3 +3,4 @@ node_modules/
 .wxt/
 stats.html
 .claude
+.DS_Store

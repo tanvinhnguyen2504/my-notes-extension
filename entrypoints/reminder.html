@@ -3,22 +3,10 @@
 <head>
 <meta charset="utf-8">
 <title>Reminder</title>
-<link rel="stylesheet" href="../src/popup.css">
+<link rel="stylesheet" href="../src/styles.css">
 </head>
 <body class="reminder">
-<header class="bar">
-  <div class="titles">
-    <div class="title">REMINDER!</div>
-    <div class="sub"><span id="reminder-count">0</span> still outstanding</div>
-  </div>
-</header>
-
-<main id="reminder-list" class="list"></main>
-
-<footer class="compose">
-  <button id="btn-dismiss" class="chip" type="button" title="Close this reminder">DISMISS</button>
-</footer>
-
-<script type="module" src="../src/reminder.ts"></script>
+<div id="root"></div>
+<script type="module" src="../src/reminder.tsx"></script>
 </body>
 </html>

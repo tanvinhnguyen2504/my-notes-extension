@@ -81,7 +81,6 @@ export default defineBackground({
       if (!state.settings.reminder.enabled) {
         return;
       }
-      // An empty reminder is pure interruption.
       if (!getHighPriorityItems(state.items).length) {
         return;
       }

@@ -3,6 +3,7 @@
   "compilerOptions": {
     "erasableSyntaxOnly": true,
     "verbatimModuleSyntax": false,
+    "jsx": "react-jsx",
     "types": ["chrome"]
   }
 }

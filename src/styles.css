@@ -1,0 +1,169 @@
+/* Tailwind tokens, the globals, and the rules that cannot become utilities.
+ *
+ * Preflight is deliberately NOT imported. `@import "tailwindcss"` would pull in
+ * a global reset, which would change the look of every component on the way in
+ * -- and this migration's premise is zero visual change. Importing theme and
+ * utilities only gives the token-generated utility classes with no reset, which
+ * is why the `*`, `body` and `button` rules below have to stand in for one.
+ *
+ * The design tokens live in @theme, the single source of colour truth: it both
+ * declares the custom properties and generates matching utilities (bg-surface,
+ * text-ink, border-line, shadow-menu, ...). No colour literal belongs in a
+ * .tsx file.
+ *
+ * Dark mode is an explicit attribute the app writes from saved state, not a
+ * media query, so it redefines the same tokens rather than using Tailwind's
+ * `dark:` variant. Every rule and utility follows without a single prefix.
+ *
+ * The component styling itself lives on the components as utilities. Only three
+ * kinds of rule remain here, each for a reason it cannot be a utility: the
+ * globals, the <html>/<body> descendant overrides, and the four classes
+ * useDragDrop applies with classList.
+ */
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@theme {
+  --color-bg: #f7f5f1;
+  --color-surface: #fffdfa;
+  --color-ink: #17161a;
+  --color-dim: rgba(23, 22, 26, 0.45);
+  --color-soft: rgba(23, 22, 26, 0.4);
+  --color-line: rgba(23, 22, 26, 0.09);
+  --color-hair: rgba(23, 22, 26, 0.055);
+  --color-chip: rgba(23, 22, 26, 0.06);
+  --color-track: rgba(23, 22, 26, 0.09);
+  --color-dash: rgba(23, 22, 26, 0.25);
+  --color-box: rgba(23, 22, 26, 0.3);
+  --color-hover: rgba(23, 22, 26, 0.035);
+  --color-teal: oklch(0.62 0.11 175);
+  --color-on-teal: #fffdfa;
+  --color-clay: oklch(0.58 0.13 40);
+  --color-clay-ink: oklch(0.48 0.11 40);
+  --color-low: rgba(23, 22, 26, 0.22);
+  --color-pri-high: oklch(0.58 0.20 25);
+  --color-pri-high-ink: oklch(0.50 0.18 25);
+  --color-pri-medium: oklch(0.80 0.16 85);
+  --color-pri-medium-ink: oklch(0.52 0.12 85);
+  --color-pri-low: oklch(0.60 0.17 255);
+  --color-pri-low-ink: oklch(0.52 0.15 255);
+  /* Solid priority pills. The background still derives from the same --pri-*
+     token that paints the row's edge strip, so the two cannot drift. Only the
+     text colour is picked per background, to clear WCAG AA (4.5:1) at the
+     pill's 9.5px type: white on red is 4.67, ink on amber 9.48. Plain --color-pri-low
+     reaches only 3.93 against white, so it is darkened 10% to land at 5.03. */
+  --color-tag-high-bg: var(--color-pri-high);
+  --color-tag-high-fg: var(--color-surface);
+  --color-tag-medium-bg: var(--color-pri-medium);
+  --color-tag-medium-fg: var(--color-ink);
+  --color-tag-low-bg: color-mix(in oklch, var(--color-pri-low) 90%, black);
+  --color-tag-low-fg: var(--color-surface);
+
+  /* Shadows live here too, so no colour literal is needed in a .tsx file. */
+  --shadow-knob: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-menu: 0 6px 24px rgba(0, 0, 0, 0.14), 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+
+html[data-theme="dark"] {
+  --color-bg: #16171b;
+  --color-surface: #1b1c21;
+  --color-ink: #f2f0ec;
+  --color-dim: rgba(242, 240, 236, 0.45);
+  --color-soft: rgba(242, 240, 236, 0.42);
+  --color-line: rgba(255, 255, 255, 0.1);
+  --color-hair: rgba(255, 255, 255, 0.06);
+  --color-chip: rgba(255, 255, 255, 0.07);
+  --color-track: rgba(255, 255, 255, 0.09);
+  --color-dash: rgba(242, 240, 236, 0.22);
+  --color-box: rgba(242, 240, 236, 0.28);
+  --color-hover: rgba(255, 255, 255, 0.045);
+  --color-teal: oklch(0.72 0.12 175);
+  --color-on-teal: #0f1a18;
+  --color-clay: oklch(0.72 0.13 45);
+  --color-clay-ink: oklch(0.82 0.11 45);
+  --color-low: rgba(242, 240, 236, 0.18);
+  --color-pri-high: oklch(0.70 0.18 25);
+  --color-pri-high-ink: oklch(0.78 0.15 25);
+  --color-pri-medium: oklch(0.84 0.15 85);
+  --color-pri-medium-ink: oklch(0.86 0.13 85);
+  --color-pri-low: oklch(0.70 0.15 255);
+  --color-pri-low-ink: oklch(0.78 0.13 255);
+  /* Dark theme lifts every --pri-* token well above mid-lightness, so the pill
+     text flips to the page background: 6.19 / 10.87 / 6.68. No darkening needed. */
+  --color-tag-high-bg: var(--color-pri-high);
+  --color-tag-high-fg: var(--color-bg);
+  --color-tag-medium-bg: var(--color-pri-medium);
+  --color-tag-medium-fg: var(--color-bg);
+  --color-tag-low-bg: var(--color-pri-low);
+  --color-tag-low-fg: var(--color-bg);
+}
+
+
+* { box-sizing: border-box; }
+
+body {
+  width: 380px;
+  /* A fixed height, not a minimum: the header, progress bar and compose row are
+     pinned and the list is the only thing that scrolls. With min-height the
+     popup grew with the list until the browser clipped it and the compose row
+     went out of reach. */
+  height: 520px;
+  margin: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font: 400 13.5px/1.35 Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+
+:focus-visible { outline: 2px solid var(--color-teal); outline-offset: 1px; }
+
+/* Chrome sizes a popup from its content and caps it at 800x600, with no resize
+   handle for the user -- so "expand the width" means the page asking for more
+   room. 720 leaves headroom under the cap; a popup that asks for more than 800
+   gets clipped, not scrolled. */
+html[data-width="wide"] body { width: 720px; }
+
+/* The reminder window is sized by chrome.windows.create, so it fills whatever
+   it is given instead of the popup's fixed 380x520. */
+body.reminder { width: auto; height: 100vh; }
+body.reminder .row { cursor: default; }
+body.reminder .compose { justify-content: flex-end; }
+
+/* The four descendant overrides below are why `row`, `text` and `compose`
+   survive as bare class hooks on components that are otherwise styled with
+   utilities: a utility cannot be reached into from an ancestor selector, and
+   both of these conditions live on <html> or <body>, outside the React root.
+   Being unlayered, they beat anything in the utilities layer regardless of
+   specificity -- which is exactly what an override needs to do.
+
+   Width alone does not fix the text: it truncates with an ellipsis at any
+   width, so wide mode has to relax that too. overflow-wrap:anywhere because a
+   pasted URL offers no break opportunities and would otherwise force the row to
+   overflow sideways. The row is min-height, so a wrapped row simply grows. The
+   reminder window's rows always wrap, for the same reason: the window is wide
+   enough, and a reminder you cannot fully read is not a reminder. */
+html[data-width="wide"] .text,
+body.reminder .text {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
+body.reminder .text { cursor: default; }
+
+/* Applied by useDragDrop with classList, not by rendering, so these cannot
+   become utilities -- a utility class string is not something classList.add()
+   can compose. This is where the Tailwind conversion stops, and it is a
+   correctness constraint rather than a preference. */
+.row[draggable="true"] { cursor: grab; }
+.row.dragging { opacity: 0.4; cursor: grabbing; }
+.row.drop-before { box-shadow: inset 0 2px 0 var(--color-teal); }
+.row.drop-after { box-shadow: inset 0 -2px 0 var(--color-teal); }
+.group-head.drop-into { background: var(--color-hover); box-shadow: inset 0 0 0 1px var(--color-teal); }

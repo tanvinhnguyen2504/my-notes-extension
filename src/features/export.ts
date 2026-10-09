@@ -1,8 +1,9 @@
 // CSV export. toCsv() stays DOM-free so it is testable in plain node; only
 // downloadCsv() touches the document.
 
-import { DayKey, Item } from "../core/types.ts";
-import { PRIORITY_LABELS, todayKey } from "../core/utils.ts";
+import { todayKey } from '../core/day_utils.ts';
+import { DayKey, Item } from '../core/types.ts';
+import { PRIORITY_LABELS } from '../core/utils.ts';
 
 const COLUMNS: string[] = ["text", "done", "priority", "dueDate", "updatedAt"];
 
