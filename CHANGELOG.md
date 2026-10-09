@@ -1,14 +1,12 @@
 # 2026-10-09
-- **No user-visible change.** The UI was rebuilt on React; what it does and how it looks are unchanged by design.
-- refactor(ui): replace the imperative DOM layer with React 19. `popup.ts` (411 lines), `reminder.ts`, `core/dom.ts`, `ui/menu.ts`, `ui/drag-drop.ts` and the `priority`/`due-date`/`settings` feature modules are all gone
-- feat(core): `Item.id`, backfilled by `normalizeState` only when absent. It exists to be a stable React key — index-as-key on a list that reorders makes React mutate the wrong node
-- feat(core): `src/core/reducer.ts` — every state transition as a pure function, composed from the existing `utils.ts` transforms. Persisting stays explicit so an incoming `chrome.storage.onChanged` update is never written back
-- feat(ui): Radix `DropdownMenu` replaces 129 lines of hand-rolled popover — positioning, flip-above, focus, Escape, outside-click, arrow keys — and `Switch` + `Collapsible` replace the settings panel's hand-wired ARIA
-- feat(ui): Tailwind v4, with the 28 design tokens moved into `@theme`. Preflight is deliberately not imported: a global reset would have changed the look on the way in
-- fix(ui): typing in the inline editor no longer discards the edit. A brace-normalising pass had turned `else if (Escape)` into an empty `if` plus an unconditional revert, so every key except Enter closed the editor
-- fix(core): four documented traps are now structurally impossible rather than carefully avoided — the `.body` catch-all click handler, the single-click/double-click target clash, re-rendering during a drag, and module-level element capture. `CLAUDE.md` keeps the reasoning for each
-- **Known cost:** the popup payload grew from 27.6 kB raw / ~9 kB gzipped to 328 kB raw / 104 kB gzipped — roughly 12x. React and react-dom account for 217 kB, Radix for 97 kB. Popup open latency is the risk this creates
-- **Known gap:** `styles.css` still holds the ~40 component classes as hand-written CSS. The token migration is done; converting those classes to per-component utilities is outstanding
+
+- [#PR5](https://github.com/tanvinhnguyen2504/my-notes-extension/pull/5)
+  - refactor(ui): replace the imperative DOM layer with React 19. `popup.ts` (411 lines), `reminder.ts`, `core/dom.ts`, `ui/menu.ts`, `ui/drag-drop.ts` and the `priority`/`due-date`/`settings` feature modules are all gone
+  - feat(core): `Item.id`, backfilled by `normalizeState` only when absent. It exists to be a stable React key — index-as-key on a list that reorders makes React mutate the wrong node
+  - feat(core): `src/core/reducer.ts` — every state transition as a pure function, composed from the existing `utils.ts` transforms. Persisting stays explicit so an incoming `chrome.storage.onChanged` update is never written back
+  - feat(ui): Radix `DropdownMenu` replaces 129 lines of hand-rolled popover — positioning, flip-above, focus, Escape, outside-click, arrow keys — and `Switch` + `Collapsible` replace the settings panel's hand-wired ARIA
+  - feat(ui): Tailwind v4, with the 28 design tokens moved into `@theme`. Preflight is deliberately not imported: a global reset would have changed the look on the way in
+  - fix(ui): typing in the inline editor no longer discards the edit. A brace-normalising pass had turned `else if (Escape)` into an empty `if` plus an unconditional revert, so every key except Enter closed the editor
 
 # 2026-10-08
 
@@ -27,7 +25,7 @@
 
 # 2026-09-13
 
-- [#PR2](https://github.com/tanvinhnguyen2504/my-checklist-extension/pull/2)
+- [#PR2](https://github.com/tanvinhnguyen2504/my-notes-extension/pull/2)
   - feat(row): reorder the list by priority when one changes
   - feat(reminder): open a daily reminder for high-priority tasks
   - feat(settings): add a wide mode that shows the full task text
