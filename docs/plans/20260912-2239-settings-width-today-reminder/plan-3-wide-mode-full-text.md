@@ -9,7 +9,7 @@ text be read in full instead of being cut off with an ellipsis.
 
 - [ ] Add a `WIDTH` constant to `utils.js` (`COMPACT: "compact"`,
       `WIDE: "wide"`) and a `nextWidth()` helper, mirroring `THEME` /
-      `nextTheme()`.
+      `switchTheme()`.
 - [ ] Validate `settings.width` against `WIDTH` in `normalizeSettings()` so an
       unknown value falls back to `COMPACT`.
 - [ ] Apply `document.documentElement.dataset.width = state.settings.width` in
@@ -33,11 +33,11 @@ gets clipped, not scrolled.
 so a long enough task truncates at any width. Wide mode must also relax that:
 
 ```css
-html[data-width="wide"] .text {
+html[data-width='wide'] .text {
   white-space: normal;
   overflow: visible;
   text-overflow: clip;
-  overflow-wrap: anywhere;   /* a pasted URL has no break opportunities */
+  overflow-wrap: anywhere; /* a pasted URL has no break opportunities */
 }
 ```
 

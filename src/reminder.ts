@@ -1,21 +1,25 @@
+// The reminder window's page. Never imports popup.ts, which wires itself on
+// load and would throw on a page without the popup's ids -- so the few lines
+// needed to draw a row are duplicated here.
+
+import { el } from "./core/dom.ts";
+import { Item, State } from "./core/types.ts";
 import {
-  PRIORITY,
   PRIORITY_LABELS,
   formatDayKeyShort,
   loadState,
   saveState,
   touchItem,
   sortByPriority,
-} from "./core/utils.js";
+} from "./core/utils.ts";
 
+const listEl = el("reminder-list");
+const countEl = el("reminder-count");
+const dismissButtonEl = el<HTMLButtonElement>("btn-dismiss");
 
-const listEl = document.getElementById("reminder-list");
-const countEl = document.getElementById("reminder-count");
-const dismissButtonEl = document.getElementById("btn-dismiss");
+let state: State | null = null;
 
-let state = null;
-
-function renderRow(item) {
+function renderRow(item: Item): HTMLElement {
   const row = document.createElement("div");
   row.className = "row";
   row.dataset.priority = String(item.priority);
@@ -48,10 +52,12 @@ function renderRow(item) {
   }
   body.append(tag);
 
-  // One control, one behaviour. The popup's .body click handler toggles done for
-  // anything not explicitly excluded, which is a trap this page simply avoids by
-  // wiring the checkbox and nothing else.
+  // Only the checkbox is wired, which sidesteps the popup's catch-all .body
+  // click handler entirely.
   box.addEventListener("click", () => {
+    if (!state) {
+      return;
+    }
     item.done = true;
     touchItem(item);
     saveState(state);
@@ -62,7 +68,7 @@ function renderRow(item) {
   return row;
 }
 
-function renderAllClear() {
+function renderAllClear(): void {
   const empty = document.createElement("div");
   empty.className = "empty";
 
@@ -76,12 +82,14 @@ function renderAllClear() {
   listEl.append(empty);
 }
 
-function render() {
-  document.documentElement.dataset.theme = state.theme;
-
-  if (!state || !state.items) {
+function render(): void {
+  // Above the theme read, not below it: `state` starts null, so the old order
+  // would have thrown had render() run before loadState() resolved.
+  if (!state) {
     return
   }
+
+  document.documentElement.dataset.theme = state.theme;
 
   const unDoneItems = state.items.filter(item => !item.done)
 
