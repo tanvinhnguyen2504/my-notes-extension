@@ -16,23 +16,23 @@ export default defineConfig({
   manifest: {
     name: 'Tasks',
     version: '1.1.0',
-    description: 'A small extensions improve quality working for developer',
+    description: 'A small browser extension that improves developers' productivity.',
     permissions: ['storage', 'alarms'],
     // WXT derives `icons` only from public/icon/{size}.png and never emits
     // default_icon, so both are declared rather than renaming the files.
     icons: {
-      16: "icons/icon16.png",
-      32: "icons/icon32.png",
-      48: "icons/icon48.png",
-      128: "icons/icon128.png",
+      16: 'icons/icon16.png',
+      32: 'icons/icon32.png',
+      48: 'icons/icon48.png',
+      128: 'icons/icon128.png',
     },
     action: {
       default_title: 'Tasks',
       default_icon: {
-        16: "icons/icon16.png",
-        32: "icons/icon32.png",
-        48: "icons/icon48.png",
-        128: "icons/icon128.png",
+        16: 'icons/icon16.png',
+        32: 'icons/icon32.png',
+        48: 'icons/icon48.png',
+        128: 'icons/icon128.png',
       },
     },
   },
