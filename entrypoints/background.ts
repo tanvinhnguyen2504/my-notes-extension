@@ -1,7 +1,7 @@
-import { defineBackground } from "wxt/utils/define-background";
-import { getHighPriorityItems, loadState, nextReminderTime } from "../src/core/utils.ts";
+import { defineBackground } from 'wxt/utils/define-background';
+import { getHighPriorityItems, loadState, nextReminderTime } from '../src/core/utils.ts';
 
-const ALARM_NAME = "reminder.daily";
+const ALARM_NAME = 'reminder.daily';
 const DAY_IN_MINUTES = 1440;
 const WINDOW_WIDTH = 440;
 const WINDOW_HEIGHT = 520;
@@ -37,12 +37,7 @@ async function openReminderWindow(): Promise<void> {
   try {
     const { left, top, width, height } = await chrome.windows.getLastFocused();
     // All four are optional, so centre only when the whole rect is known.
-    if (
-      left !== undefined &&
-      top !== undefined &&
-      width !== undefined &&
-      height !== undefined
-    ) {
+    if (left !== undefined && top !== undefined && width !== undefined && height !== undefined) {
       position.left = Math.round(left + (width - WINDOW_WIDTH) / 2);
       position.top = Math.round(top + (height - WINDOW_HEIGHT) / 2);
     }
@@ -54,8 +49,8 @@ async function openReminderWindow(): Promise<void> {
   await chrome.windows.create({
     // Resolved against the extension root, where WXT emits HTML entrypoints
     // flattened.
-    url: "reminder.html",
-    type: "popup",
+    url: 'reminder.html',
+    type: 'popup',
     focused: true,
     width: WINDOW_WIDTH,
     height: WINDOW_HEIGHT,
@@ -68,7 +63,7 @@ async function openReminderWindow(): Promise<void> {
 // keeps an idle-terminated worker wakeable -- so nothing here may sit behind an
 // `await` either.
 export default defineBackground({
-  type: "module",
+  type: 'module',
   main() {
     chrome.alarms.onAlarm.addListener(async (alarm) => {
       if (alarm.name !== ALARM_NAME) {
@@ -81,7 +76,6 @@ export default defineBackground({
       if (!state.settings.reminder.enabled) {
         return;
       }
-      // An empty reminder is pure interruption.
       if (!getHighPriorityItems(state.items).length) {
         return;
       }
@@ -92,7 +86,7 @@ export default defineBackground({
     chrome.runtime.onInstalled.addListener(syncAlarm);
     chrome.runtime.onStartup.addListener(syncAlarm);
     chrome.storage.onChanged.addListener((_, area) => {
-      if (area === "local") {
+      if (area === 'local') {
         syncAlarm();
       }
     });

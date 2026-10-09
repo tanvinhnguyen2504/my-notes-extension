@@ -14,6 +14,10 @@ export type DayKey = string;
 export type TimeOfDay = string;
 
 export interface Item {
+  // Stable across loads, backfilled by normalizeState for items that predate
+  // the field. Exists to be a React key, NOT an addressing scheme -- handlers,
+  // groupByDay and moveItem all still work in array indices.
+  id: string;
   text: string;
   done: boolean;
   priority: Priority;

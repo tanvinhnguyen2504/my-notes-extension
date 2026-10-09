@@ -2,7 +2,7 @@
   "name": "my-todo-list-ext",
   "description": "A quiet todo checklist in your toolbar. Offline, no account, priority flags.",
   "private": true,
-  "version": "1.0.4",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "wxt",
@@ -14,8 +14,21 @@
     "zip:firefox": "wxt zip -b firefox"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
     "@types/chrome": "^0.3.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@wxt-dev/module-react": "^1.2.2",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
     "wxt": "^0.21.4"
+  },
+  "dependencies": {
+    "@radix-ui/react-collapsible": "^1.1.21",
+    "@radix-ui/react-dropdown-menu": "^2.1.25",
+    "@radix-ui/react-switch": "^1.3.8",
+    "@radix-ui/react-tabs": "^1.1.22",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
   }
 }

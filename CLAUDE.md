@@ -2,7 +2,8 @@
 
 Chrome Manifest V3 extension: a toolbar popup todo checklist, plus a service
 worker that opens a daily reminder window. TypeScript under full `strict`, built
-with [WXT](https://wxt.dev) 0.21 (Vite under the hood). No UI framework.
+with [WXT](https://wxt.dev) 0.21 (Vite under the hood). UI is React 19 with
+Radix primitives; styling is Tailwind v4 tokens over hand-written component CSS.
 
 **The folder you point `chrome://extensions` at is `.output/chrome-mv3/`, not the
 repo root.** There is no `manifest.json` in the tree — it is generated at build
@@ -33,29 +34,34 @@ entry points, and nothing imports upward.
 | --- | --- |
 | `wxt.config.ts` | Build config + the manifest fields. `storage` + `alarms`, no host permissions. `imports: false` |
 | `tsconfig.json` | Extends `.wxt/tsconfig.json`; adds only `erasableSyntaxOnly` |
-| `entrypoints/popup.html` | Markup + `row-tpl` / `group-tpl` templates + the priority menu container + the settings panel |
+| `entrypoints/popup.html` | `<div id="root">`, the stylesheet link, and the module script. Nothing else |
 | `entrypoints/reminder.html` | The reminder window's page |
 | `entrypoints/background.ts` | Service worker. Owns the reminder alarm and opens its window |
-| `src/popup.css` | Theme tokens and all styling, for the popup *and* the reminder window |
-| `src/popup.ts` | DOM rendering and event wiring. No business logic |
-| `src/reminder.ts` | The reminder window: opens for HIGH-priority work, lists everything outstanding |
+| `src/styles.css` | `@theme` tokens, the globals, and the rules that cannot be utilities. Serves the popup *and* the reminder window |
+| `src/popup.tsx` | React root for the popup. Mounts and nothing else |
+| `src/reminder.tsx` | React root for the reminder window |
 | `src/core/types.ts` | `Item`, `State`, `Settings`, `Priority`, `DayKey` and friends. Types only |
-| `src/core/utils.ts` | Storage, parsing, dates, grouping. **No DOM access** |
-| `src/core/dom.ts` | `el()` / `query()`. The only module allowed to reach for the document by id |
-| `src/ui/menu.ts` | The shared popover mechanics one menu at a time is built on |
-| `src/ui/drag-drop.ts` | HTML5 drag events, drop markers, and the dragged-row state |
-| `src/features/priority.ts` | The per-row priority tag and its menu |
-| `src/features/due-date.ts` | The per-row due chip and its menu |
-| `src/features/settings.ts` | The settings panel: its open state and its controls |
-| `src/features/export.ts` | CSV export of the list |
+| `src/core/utils.ts` | Storage, normalisation, parsing, priority, theme/width. **No DOM access** |
+| `src/core/day_utils.ts` | Day keys, their formatting, and grouping items by day. **No DOM access** |
+| `src/core/reducer.ts` | The single place state changes. Pure, DOM-free, composed from `utils.ts` |
+| `src/components/PopupPage.tsx` | Owns the reducer, the storage subscription, and non-persisted view state |
+| `src/components/ReminderPage.tsx` | The reminder window: opens for HIGH-priority work, lists everything outstanding |
+| `src/components/NoteRow.tsx` | The shared row. Presentational, slot-based, used by both pages |
+| `src/components/PopupRow.tsx` | Wraps `NoteRow` with the menu, chip, editing, deletion and drag |
+| `src/components/PriorityMenu.tsx` | Radix `DropdownMenu`. Replaced 129 lines of hand-rolled popover |
+| `src/components/SettingsPanel.tsx` | Radix `Collapsible` + `Switch` |
+| `src/components/{Header,Compose,Progress,DayGroupSection,DueChip,EditableText,EmptyState,SettingSwitch}.tsx` | The rest of the tree |
+| `src/hooks/useDragDrop.ts` | HTML5 drag events, drop markers, and the dragged-row ref |
+| `src/features/export.ts` | CSV export of the list. The only non-component feature |
 | `public/icons/` | Copied verbatim to the output root |
 
-`entrypoints/popup.html` loads `src/popup.ts` with `type="module"`, and Vite
-bundles that entrypoint and everything it imports. Adding a module to the popup
-still means adding it as an import, not a second `<script>` tag — but now for a
-bundler reason rather than a browser one. `reminder.html` is a separate page with
-its own entry point, and `background.ts` is declared `type: "module"` through
-`defineBackground` so it can import `utils.ts` too.
+Both HTML entrypoints are a `<div id="root">` plus a `<script type="module">`
+pointing at a `.tsx` root, and Vite bundles each entrypoint with everything it
+imports. `background.ts` is declared `type: "module"` through `defineBackground`
+so it can import `utils.ts` too.
+
+Import specifiers carry explicit `.ts` / `.tsx` extensions, and the `@/` alias
+WXT offers is deliberately unused.
 
 Import specifiers carry explicit `.ts` extensions (`./core/utils.ts`), and the
 `@/` alias WXT offers is deliberately unused. Both exist so the same files run
@@ -63,26 +69,57 @@ untouched under plain `node` — see Testing.
 
 ## Architecture rules
 
-- **`utils.ts` stays DOM-free.** It is the only part that is directly testable
-  in Node. Anything that can be expressed as a pure function of the state
-  belongs there, not in `popup.ts`. `dom.ts` is the only module allowed to reach
-  for the document by id; everything else takes elements as parameters.
-- **`drag-drop.ts` never touches the todo list.** It reports a completed drop as
+- **`core/` stays DOM-free.** Anything expressible as a pure function of the
+  state belongs in `utils.ts`, `day_utils.ts` or `reducer.ts`, not in a component. Nothing in
+  the codebase looks an element up by id any more.
+- **`reducer.ts` is the single place state changes**, and it is pure: every case
+  returns a new state, items array and item object where it changes one. A
+  mutated-in-place item is a row that silently refuses to re-render. No-op
+  actions return the *same* state reference, which is how the view skips a save
+  and a render.
+- **Every list row carries `key={item.id}`, never the index.** Four of the traps
+  below dissolve only because that key is stable. With an index key a reorder
+  makes React mutate existing nodes instead of moving them, and the symptoms
+  look like application bugs: an editor open on the wrong row, a `dblclick`
+  landing on text that just changed.
+- **`useDragDrop` never touches the todo list.** It reports a completed drop as
   indices plus a target day key through `onRowDrop` / `onGroupDrop`, and
-  `popup.ts` decides what that means. It imports exactly one thing from `core`:
-  the `DayKey` type. `menu.ts` imports nothing from `core` at all, which is why
-  `MenuEntry.priority` is a plain `number` and not a `Priority`.
-- **`utils.ts` must stay runnable in a service worker.** `background.ts` imports
-  it, and a worker has no `window` — which is why `preferredTheme()` guards on
+  `PopupPage` decides what that means. It imports exactly one thing from `core`:
+  the `DayKey` type.
+- **Nothing renders during a drag.** The dragged index is a `useRef` and hover
+  markers are applied with `classList`, so a `dragover` at 60fps causes zero
+  renders. The budget is one render per drag, on the drop. Mutating `classList`
+  on nodes React owns is safe *only* because of that, and because every marker
+  is cleared on drop before the render that follows.
+- **`utils.ts` must stay runnable in a service worker**, and so must
+  `day_utils.ts`, which `utils.ts` imports for `normalizeState` and
+  `parseDraft`. `background.ts` imports `utils.ts`, and a worker has no `window` — which is why `preferredTheme()` guards on
   `typeof window`. Anything added there that touches `window` breaks the worker
   on the empty-storage path, silently. **The compiler will not catch this:**
   `lib` includes `DOM`, so `window` type-checks in `utils.ts` regardless. The
   guard is the only protection, and nothing tests it.
-- **`reminder.ts` never imports `popup.ts`.** `popup.ts` calls `el()` at module
-  top level and runs its wiring on load, so it throws on any page without the
-  popup's ids — now with the id named in the message rather than as a null
-  dereference. The reminder page shares `utils.ts` and `popup.css` and
-  duplicates the few lines it needs to draw a row.
+- **`NoteRow` stays free of reducer dispatch, drag wiring and Radix imports.**
+  The old rule was "`reminder.ts` never imports `popup.ts`", because `popup.ts`
+  wired itself at module load and threw on a page without the popup's ids. That
+  hazard is gone, but the layering it protected is not: the popup's interactive
+  behaviour belongs in `PopupRow`, not in the shared row.
+- **Four class names are hooks, not styling: `row`, `text`, `compose`,
+  `group-head`.** Everything else is utilities. These four exist because an
+  ancestor selector cannot reach into a utility, and their conditions live
+  outside the React root (`html[data-width="wide"]`, `body.reminder`) or are
+  applied by `classList` (`drop-into` and the three drag markers). Removing one
+  from a component silently drops wide mode, the reminder window's wrapping, or
+  a drop marker -- with no error anywhere.
+- **Never rely on utility order for a conflict.** Tailwind sorts utilities by
+  property, not by the order they appear in `className`, so two utilities
+  setting the same property at equal specificity are a coin toss. Write the
+  conditions as mutually exclusive instead
+  (`group-data-[priority=2]:group-data-[done=false]:`), or add a variant so one
+  wins by specificity (`data-[armed=false]:hover:`). The old CSS used source
+  order for exactly these cases and said so in a comment; that lever is gone.
+- **Preflight is not imported, so no reset exists** beyond the `*`, `body` and
+  `button` rules in `styles.css`. A utility that assumes Preflight can silently
+  do nothing.
 - **Types are derived, never restated.** `Priority` is
   `(typeof PRIORITY)[keyof typeof PRIORITY]`, so adding a level to the const
   object widens the type automatically. Never a TS `enum`: non-erasable syntax
@@ -92,9 +129,11 @@ untouched under plain `node` — see Testing.
   `State`. Nothing downstream casts, and nothing upstream is trusted. If a
   shape cannot be proven, the fix goes in `normalizeState`, not in a cast at
   the call site.
-- **`render()` rebuilds every row from the template.** There is no partial
-  re-render. Any handler that mutates state calls `saveAndRender()`, which
-  replaces the DOM nodes the handler was attached to.
+- **Persisting is explicit, never reactive.** `dispatch` saves for
+  locally-originated actions and skips `REPLACE_STATE`. An effect that saved on
+  every state change would write back the state that just arrived *from*
+  storage, which -- with `background.ts` re-syncing the alarm on every write --
+  is a feedback loop. The natural React translation is the wrong one.
 
 ## Data model
 
@@ -118,6 +157,7 @@ An item is:
 
 ```js
 {
+  id: "9f1c...",         // stable across loads, backfilled by normalizeState
   text: "pay rent",
   done: false,
   priority: 2,          // PRIORITY.LOW 0 | NORMAL 1 | HIGH 2
@@ -154,17 +194,25 @@ list position, not the item.
 
 - Element handles are `const somethingEl` / `somethingButtonEl`, ids are
   kebab-case with a `btn-` prefix for buttons (`btn-check-all`).
-- **Look elements up with `el()` / `query()`, never with a `!` assertion.** Both
-  throw and name what was missing, at the point the id is named. A
-  `getElementById("draft")!` turns a typo in `popup.html` into a null-property
-  read several frames away, which is the failure mode this codebase already has
-  a trap entry about. `el()`'s internal cast is the only cast in the codebase;
-  keep it that way.
+- Components are `.tsx`; everything else is `.ts`. Components live in
+  `src/components/`, hooks in `src/hooks/`.
+- **Colour values live in `@theme` only.** No colour literal belongs in a `.tsx`
+  file -- that is the single rule keeping the design themeable. Shadows are
+  tokens too (`--shadow-knob`, `--shadow-menu`) precisely so their `rgba()`
+  alphas do not have to be inlined in a component.
+- **Sizes are arbitrary-value utilities (`h-[28px]`, `text-[10.5px]`), not the
+  default scale.** The design was drawn in px before Tailwind arrived and the
+  conversion's premise was zero visual change; rounding to the 0.25rem scale
+  would have moved every edge.
+- Data attributes are rendered as strings, never booleans. See the trap below.
 - Priority levels are `PRIORITY.*` constants, never bare `0`/`1`/`2`.
 - `PRIORITY_ORDER` drives menu order; `PRIORITY_LABELS` drives menu text.
-- The CSS keys off `data-priority`, `data-done`, and `data-key` on rows and
-  groups. **These attribute names are a contract with `popup.css`** — renaming
-  one in JS alone silently breaks the styling with no error anywhere.
+- The styling keys off `data-priority`, `data-done`, `data-key` and
+  `data-overdue` on rows and groups, now through `group-data-*` variants on the
+  children rather than descendant CSS. **These attribute names are a contract
+  with the utilities** — renaming one in JS alone silently breaks the styling
+  with no error anywhere. The row and the day section are both Tailwind
+  `group`s, which is what lets a child read them.
 - Guard bodies are always braced. No `if (cond) return;` on one line, even
   where a single-line guard would read fine.
 
@@ -181,26 +229,31 @@ callbacks, which stay inline but still take a block body.
 
 ## Traps this codebase has already hit
 
-- **`.body` has a catch-all click handler that toggles `done`.** Every control
-  placed inside the row body inherits that behaviour unless explicitly excluded.
-  `.del`, `.text`, and the since-removed `.due` chip each needed a `closest()`
-  guard added after the fact. A new in-row control will hit this too. Inverting the check so `.body`
-  only toggles for `.box` and blank space would close it permanently.
+- **~~`.body` has a catch-all click handler that toggles `done`.~~ No longer
+  applies.** It used to: every control inside the row body inherited the toggle
+  unless explicitly excluded, and `.del`, `.text` and the `.due` chip each
+  needed a `closest()` guard added after the fact. React wires handlers per
+  element, so the catch-all, the three guards and the `BODY_CONTROLS` selector
+  are all gone. **Do not reintroduce a handler on `.body`** -- it would bring the
+  whole class of bug back with it.
 - **Single-click-to-toggle and double-click-to-edit cannot share a target.** A
   double-click sends two `click` events *first*; each one re-renders, so the
   `dblclick` then fires on a node no longer in the document and the edit opens
   on an orphaned row — invisible, no error. This is why clicking a task's text
   does not tick it off.
-- **Never re-render during a drag.** Rebuilding the rows destroys the node the
-  browser is dragging and aborts the gesture. Hover state is CSS classes only;
-  the list changes on `drop`.
+- **~~Never re-render during a drag.~~ Still true in effect, for a different
+  reason.** The old hazard was that rebuilding the rows destroyed the node being
+  dragged. React reconciles rather than rebuilding, so a render mid-drag no
+  longer aborts the gesture -- *given a stable key*. The rule survives as a
+  performance one: hover markers stay out of React state so a `dragover` causes
+  no render at all.
 - **`dragover` must call `preventDefault()`** or `drop` never fires, and a drag
   needs `dataTransfer.setData()` or Firefox refuses to start it.
 - **`loadState()` is async and its `.then` replaces `state` wholesale.** Items
   added in the milliseconds before storage resolves are silently discarded.
   Known, unfixed, hard to hit in practice. The same wholesale replacement is why
   the reminder window ticking an item needed the `chrome.storage.onChanged`
-  listener in `popup.ts` — without it the popup's next save writes stale items
+  listener in `PopupPage` — without it the popup's next save writes stale items
   back and the tick vanishes.
 - **`background.ts` re-syncs the alarm on every storage write**, and the reminder
   window writes whenever an item is ticked. `syncAlarm()` therefore compares the
@@ -232,7 +285,25 @@ callbacks, which stay inline but still take a block body.
   silently at runtime.
 - **`imports: false`.** WXT can auto-inject `defineBackground` and friends as
   globals. It is off so that nothing in this codebase is an identifier you
-  cannot grep for, and so entrypoints stay importable by plain `node`.
+  cannot grep for.
+- **React omits `data-x={false}` entirely.** `styles.css` matches on
+  `[data-done="false"]`, so every data attribute is rendered as a *string*:
+  `data-done={String(item.done)}`. Passing the boolean drops the attribute and
+  the rule silently stops matching.
+- **Radix portals its content outside the React root**, to `document.body`. Two
+  consequences: `data-theme` has to live on `documentElement` (it does), or a
+  portalled menu renders in the wrong theme; and any style rule scoped under the
+  root element would not reach it.
+- **React's `onChange` is the DOM's `input` event, not `change`.** The reminder
+  time field therefore holds its own local draft state: bound straight to saved
+  state, a controlled `<input type="time">` would overwrite "0:3" with the last
+  good value while the user was still typing. Only a complete time reaches the
+  reducer, which rejects the rest through `isTimeOfDay`.
+- **`else if` is not a guard clause.** A brace-normalising pass once rewrote
+  `} else if (cond) { body }` into `} else { if (cond) {} body }`, which made the
+  editor's `settle(false)` run for *every* key except Enter -- typing one
+  character closed the editor and discarded the edit. The detector is an
+  `if (...) {` immediately followed by `}`.
 
 ## Testing
 
@@ -240,24 +311,30 @@ There is no test framework and no test suite. `npm run check` (`tsc --noEmit`)
 is the only automated gate; everything else is checked by loading
 `.output/chrome-mv3/` in Chrome and using it.
 
-Two tsconfig choices exist so the sources stay runnable under plain `node`
-without a transpile step, which is what any future test would depend on:
+**The sources no longer run under plain `node`.** They used to, which is why
+`erasableSyntaxOnly` is on and why imports carry explicit extensions. Two things
+ended it: components are `.tsx`, and Node's type-stripping does not do JSX; and
+house style uses one plain `import` form for values *and* types, which the
+stripper cannot tell apart, so it leaves `import { DayKey }` in place and ESM
+linking fails with "does not provide an export named". `tsc` and Vite both elide
+those imports correctly, so only the no-build-step route is gone.
 
-- **`erasableSyntaxOnly` is on.** `enum`, `namespace`, parameter properties and
-  `declare` fields compile under WXT but crash under plain `node`.
-- **Imports carry explicit `.ts` extensions**, and WXT's `@/` alias is unused.
-  Node's resolver needs the real on-disk filename and knows nothing about the
-  alias; Vite resolves `.ts` specifiers without complaint.
+Verification during development is therefore throwaway: a scratchpad script run
+through `npx tsx` (which elides correctly), deleted once green. `src/core/` is
+the layer worth driving that way -- `reducer.ts` and `normalizeState` are pure,
+and between them they hold every state transition.
 
 If a suite is ever added, the constraints that mattered last time: dispatch the
 real event sequence rather than the convenient one (`dblclick` alone hides the
-two-clicks-first bug); jsdom events carry no `dataTransfer`; `instanceof` is
-realm-sensitive, so jsdom's constructors have to go on `globalThis`, not just
-`window` and `document`; and the popup can only be booted once per process.
+two-clicks-first ordering); jsdom events carry no `dataTransfer`; `instanceof`
+is realm-sensitive, so jsdom's constructors have to go on `globalThis`; and
+`renderToStaticMarkup` is enough to pin the class-and-data-attribute contract
+that `styles.css` depends on, with no DOM at all.
 
 ## Loose ends
 
-- `debounce()` and `formatDate()` in `utils.ts` are exported but unused.
+- `debounce()` in `utils.ts` and `formatDate()` in `day_utils.ts` are exported
+  but unused.
   `debounce()` was a leading-edge guard against rapid-Enter duplicate adds and
   was later unwired; `formatDate()` rendered the per-row modified stamp that the
   row no longer shows.
@@ -268,3 +345,36 @@ realm-sensitive, so jsdom's constructors have to go on `globalThis`, not just
   profile, which is where confirming it became cheap.
 - `typescript` is pinned to `^5.9.3`, the version WXT 0.21.4 ships against. TS 7
   (the Go port) installs as `latest` and is untested here.
+- **`day_utils.ts` is the first step of a wider `core/` split.** Still planned,
+  still only scaffolding: `core/task_utils.ts` for the pure item helpers, and a
+  `src/storages/` layer. The storage split is **blocked on a design decision** --
+  `STORAGE_KEY` holds one object behind one `normalizeState()` gate, so
+  per-entity modules mean either three keys (a breaking change with no schema
+  version to migrate on) or three modules read-modify-writing one key, which
+  reintroduces lost updates. Decide that before writing any of it.
+- **Extracting `day_utils.ts` exposed its export surface**: of 11 exports, only
+  `isDayKey`, `todayKey`, `formatDayKeyShort`, `extractDayToken` and
+  `groupByDay` have a consumer outside the module. `toDayKey`, `shiftDayKey`,
+  `formatDayKey`, `dayGroupLabel` and `parseDayInput` are internal helpers that
+  need not be exported; `formatDate` has no caller at all. Left as-is
+  deliberately -- dropping an `export` is a separate, easily-reviewed change.
+- **The Tailwind conversion is done but unverified by eye.** The ~40 component
+  classes are utilities on the components; `styles.css` keeps only the tokens,
+  the globals, the `<html>`/`<body>` descendant overrides and the four drag
+  classes. The emitted CSS and the markup contract are checked automatically,
+  but the side-by-side visual comparison against the pre-React build has never
+  been run. Riskiest: the priority menu's position and flip, since `.menu`'s
+  `position: fixed` was removed.
+- **The date input renders inside the row body**, where the body's 11px flex gap
+  reserves a column for it even at zero width -- so popup rows have ~11px less
+  room for text than the pre-React build. `NoteRow`'s `children` slot exists for
+  exactly this and is unused; moving the input there, or wrapping chip and input
+  in one flex item, is the fix. Cosmetic, and predates the Tailwind work.
+- **Bundle cost of the React migration**, measured: the popup payload went from
+  27.6 kB raw / ~9 kB gzipped to **348 kB raw / 108 kB gzipped**, about 12x. React
+  and react-dom are 217 kB of that; Radix is 97 kB. Popup open latency is the one
+  user-facing risk, and `preact/compat` is the lever if it ever matters.
+- **Utilities cost more CSS here than the hand-written rules did**, measured:
+  12.7 kB to 19.2 kB raw, 4.1 kB gzipped. ~14 components with almost no
+  repetition between them means one verbose escaped selector per declaration,
+  which does not amortise. The phase 7 plan predicted a shrink and was wrong.
