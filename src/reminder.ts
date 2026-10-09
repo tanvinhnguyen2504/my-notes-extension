@@ -1,12 +1,9 @@
-// The reminder window's page.
-//
-// It never imports popup.ts: popup.ts calls getElementById at module top level
-// and runs its wiring on load, so it throws on any page without the popup's
-// ids. This page shares utils.ts and popup.css and duplicates the few lines it
-// needs to draw a row.
+// The reminder window's page. Never imports popup.ts, which wires itself on
+// load and would throw on a page without the popup's ids -- so the few lines
+// needed to draw a row are duplicated here.
 
 import { el } from "./core/dom.ts";
-import type { Item, State } from "./core/types.ts";
+import { Item, State } from "./core/types.ts";
 import {
   PRIORITY_LABELS,
   formatDayKeyShort,
@@ -55,9 +52,8 @@ function renderRow(item: Item): HTMLElement {
   }
   body.append(tag);
 
-  // One control, one behaviour. The popup's .body click handler toggles done for
-  // anything not explicitly excluded, which is a trap this page simply avoids by
-  // wiring the checkbox and nothing else.
+  // Only the checkbox is wired, which sidesteps the popup's catch-all .body
+  // click handler entirely.
   box.addEventListener("click", () => {
     if (!state) {
       return;
@@ -87,10 +83,8 @@ function renderAllClear(): void {
 }
 
 function render(): void {
-  // Moved above the theme read, which used to come first: `state` starts null,
-  // so the original order would have thrown had render() ever run before
-  // loadState() resolved. The `!state.items` half of the old check is gone --
-  // State guarantees an array, and normalizeState() is what makes that true.
+  // Above the theme read, not below it: `state` starts null, so the old order
+  // would have thrown had render() run before loadState() resolved.
   if (!state) {
     return
   }

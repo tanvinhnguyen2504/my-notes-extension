@@ -1,20 +1,9 @@
-// Element lookups that fail loudly.
-//
-// Under strict mode getElementById returns HTMLElement | null, so every lookup
-// needs handling. These throw rather than returning null, and they name what
-// was missing: a wrong id in popup.html is the failure mode CLAUDE.md describes
-// as "fails at runtime with no error at edit time", and the alternative --
-// getElementById("draft")! at each site -- turns it into a "Cannot read
-// properties of null" several frames from the cause.
-//
-// This file is separate from utils.ts on purpose. utils.ts is imported by the
-// service worker and must stay DOM-free; this is the only module allowed to
-// reach for the document by id.
+// Element lookups that throw and name what was missing, rather than returning
+// null for a `!` to swallow. Kept out of utils.ts, which must stay DOM-free for
+// the service worker; this is the only module allowed to reach for ids.
 
-// The cast is the one in the codebase, and it is contained here deliberately:
-// nothing can prove at compile time that #draft is an <input>, so the
-// association is asserted once, at the point where the id is named, rather than
-// at every use of the result.
+// The single cast in the codebase: nothing can prove #draft is an <input>, so
+// it is asserted once, where the id is named.
 export function el<T extends HTMLElement = HTMLElement>(id: string): T {
   const found = document.getElementById(id);
   if (!found) {

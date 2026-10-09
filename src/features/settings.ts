@@ -1,13 +1,10 @@
 import { query } from "../core/dom.ts";
-import type { State } from "../core/types.ts";
+import { State } from "../core/types.ts";
 import { THEME, WIDTH } from "../core/utils.ts";
 
-// The seven element handles are assigned together by installSettings() and are
-// never individually absent, so they live in one nullable object rather than as
-// seven `X | null` module variables. Strict mode does not narrow a module
-// variable across a function call -- isSettingsOpen() checking panelEl would
-// not have taught closeSettings() anything -- and this way each function needs
-// one guard instead of seven.
+// One nullable object rather than seven `X | null` module variables: strict mode
+// does not narrow a module variable across a function call, so this is one guard
+// per function instead of seven.
 interface Controls {
   panel: HTMLElement;
   trigger: HTMLElement;
@@ -53,8 +50,8 @@ function toggleSettings(): void {
   }
 }
 
-// Syncs the controls from state. Called on every render, because a preference can
-// change from somewhere other than its own switch.
+// Called on every render: a preference can change from somewhere other than its
+// own switch.
 export function renderSettings(state: State): void {
   if (!controls) {
     return;
@@ -66,8 +63,8 @@ export function renderSettings(state: State): void {
   controls.reminder.setAttribute("aria-checked", String(enabled));
   // A time with no reminder to attach it to is just clutter.
   controls.reminderTimeRow.hidden = !enabled;
-  // Assigning unconditionally would fight the user mid-edit, because an
-  // <input type="time"> reports a change per field as it is filled in.
+  // Assigning unconditionally would fight the user mid-edit, since the control
+  // reports a change per field.
   if (controls.reminderTime.value !== time) {
     controls.reminderTime.value = time;
   }
@@ -96,13 +93,11 @@ export function installSettings({
   controls.theme.addEventListener("click", onToggleTheme);
   controls.width.addEventListener("click", onToggleWidth);
   controls.reminder.addEventListener("click", onToggleReminder);
-  // "change" rather than "input": input fires on every field of the time control,
-  // so it would report half-typed times like "0:30".
+  // "change" not "input": input would report half-typed times like "0:30".
   reminderTime.addEventListener("change", () => onPickReminderTime(reminderTime.value));
 
-  // Escape closes the panel, matching how the priority menu already behaves.
-  // The menu installs its own Escape handler and returns early when no menu is
-  // open, so the two do not fight over the key.
+  // The menu's own Escape handler returns early when no menu is open, so the
+  // two do not fight over the key.
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape" || !isSettingsOpen()) {
       return;

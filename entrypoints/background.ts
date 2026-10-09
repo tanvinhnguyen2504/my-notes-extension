@@ -6,7 +6,7 @@ const DAY_IN_MINUTES = 1440;
 const WINDOW_WIDTH = 440;
 const WINDOW_HEIGHT = 520;
 
-// Creates, updates, or clears the alarm to match the saved setting.
+// Brings the alarm in line with the saved setting.
 async function syncAlarm(): Promise<void> {
   const state = await loadState();
   const { enabled, time } = state.settings.reminder;
@@ -19,9 +19,9 @@ async function syncAlarm(): Promise<void> {
     return;
   }
 
-  // This runs on every storage write, including the reminder window ticking an
-  // item off. Recreating the alarm each time would quietly push the next one
-  // further away, so only touch it when the target has actually moved.
+  // Runs on every storage write, including the reminder window ticking an item
+  // off. Recreating it each time would push the next reminder further away, so
+  // only touch it when the target has actually moved.
   const when = nextReminderTime(time);
   if (existing && Math.abs(existing.scheduledTime - when) < 60_000) {
     return;
@@ -30,15 +30,13 @@ async function syncAlarm(): Promise<void> {
   await chrome.alarms.create(ALARM_NAME, { when, periodInMinutes: DAY_IN_MINUTES });
 }
 
-// Centred on whichever browser window the user was last in, which is what makes
-// this read as a dialog rather than as a stray window.
+// Centred on the last-focused window, which is what makes it read as a dialog
+// rather than a stray window.
 async function openReminderWindow(): Promise<void> {
   const position: { left?: number; top?: number } = {};
   try {
     const { left, top, width, height } = await chrome.windows.getLastFocused();
-    // All four are optional in the chrome types, and a window genuinely can
-    // report none of them. Centre only when the whole rect is known; otherwise
-    // fall through to letting the browser place it, as below.
+    // All four are optional, so centre only when the whole rect is known.
     if (
       left !== undefined &&
       top !== undefined &&
@@ -49,13 +47,13 @@ async function openReminderWindow(): Promise<void> {
       position.top = Math.round(top + (height - WINDOW_HEIGHT) / 2);
     }
   } catch (_) {
-    // getLastFocused rejects when no window is open. Let the browser place it
-    // rather than throwing in a worker where the error would go unseen.
+    // Rejects when no window is open; let the browser place it rather than
+    // throwing where nothing would see the error.
   }
 
   await chrome.windows.create({
-    // Resolved against the extension root, where WXT emits every HTML
-    // entrypoint flattened -- entrypoints/reminder.html becomes reminder.html.
+    // Resolved against the extension root, where WXT emits HTML entrypoints
+    // flattened.
     url: "reminder.html",
     type: "popup",
     focused: true,
@@ -65,11 +63,10 @@ async function openReminderWindow(): Promise<void> {
   });
 }
 
-// WXT imports this module at build time to read the options, so nothing may
-// touch `chrome` at the top level. main() runs synchronously on every worker
-// startup, which is what keeps the listeners registered early enough for an
-// idle-terminated worker to be woken for their events -- so nothing in here may
-// sit behind an `await` either.
+// WXT imports this module at build time, so nothing may touch `chrome` at the
+// top level. main() runs synchronously at every worker startup, which is what
+// keeps an idle-terminated worker wakeable -- so nothing here may sit behind an
+// `await` either.
 export default defineBackground({
   type: "module",
   main() {
@@ -79,12 +76,12 @@ export default defineBackground({
       }
 
       const state = await loadState();
-      // Re-checked rather than trusted: the alarm may outlive the setting being
-      // switched off, if the worker was asleep when that happened.
+      // Re-checked: the alarm can outlive the setting being switched off while
+      // the worker was asleep.
       if (!state.settings.reminder.enabled) {
         return;
       }
-      // An empty reminder is pure interruption, so there is nothing to show.
+      // An empty reminder is pure interruption.
       if (!getHighPriorityItems(state.items).length) {
         return;
       }

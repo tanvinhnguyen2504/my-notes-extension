@@ -1,12 +1,10 @@
-// Drag and drop for the checklist: reordering rows, and reassigning an item's
-// day by dropping it into another group.
+// Reordering rows, and reassigning a day by dropping into another group.
 //
-// This module owns exactly three things -- the HTML5 drag events, the CSS
-// classes that show where a drop would land, and the one piece of mutable drag
-// state (which row is in flight). It never reads or writes the todo list. A
-// completed drop is reported as plain data and the caller decides what it means.
+// Owns the drag events, the marker classes, and which row is in flight. Never
+// reads or writes the todo list: a drop is reported as plain data and the caller
+// decides what it means.
 
-import type { DayKey } from "../core/types.ts";
+import { DayKey } from "../core/types.ts";
 
 const CLASS = {
   DRAGGING: "dragging",
@@ -19,23 +17,21 @@ const MARKER_SELECTOR = `.${CLASS.DROP_BEFORE}, .${CLASS.DROP_AFTER}, .${CLASS.D
 
 export type DropSide = "before" | "after";
 
-// `to` is an index into the array as it was BEFORE the move, which is the
-// coordinate system moveItem(items, from, to) expects. `dayKey` is the day of
-// the group the row landed in, or null for unscheduled.
+// `to` indexes the array as it was BEFORE the move -- the coordinate system
+// moveItem() expects. `dayKey` is the group landed in, null for unscheduled.
 export interface RowDrop {
   from: number;
   to: number;
   dayKey: DayKey | null;
 }
 
-// A row dropped on a group header: reschedule only, no reorder.
+// Dropped on a group header: reschedule only, no reorder.
 export interface GroupDrop {
   from: number;
   dayKey: DayKey | null;
 }
 
 export interface DragControllerOptions {
-  // Scroll container holding the groups and rows.
   listEl: HTMLElement;
   onRowDrop: (drop: RowDrop) => void;
   onGroupDrop: (drop: GroupDrop) => void;
@@ -50,15 +46,13 @@ export interface DragController {
 
 // --- pure geometry ----------------------------------------------------
 
-// Which half of the row the pointer sits in. Above the midpoint means the
-// dragged row lands before this one, below means after.
+// Above the row's midpoint lands before it, below lands after.
 export function dropSide(row: HTMLElement, clientY: number): DropSide {
   const bounds = row.getBoundingClientRect();
   return clientY > bounds.top + bounds.height / 2 ? "after" : "before";
 }
 
-// Turns a hovered row plus a side into an insertion point expressed as an index
-// into the ORIGINAL array -- the coordinate system moveItem() expects.
+// An index into the ORIGINAL array, as moveItem() expects.
 export function insertionIndex(hoveredIndex: number, side: DropSide): number {
   return side === "after" ? hoveredIndex + 1 : hoveredIndex;
 }
@@ -80,22 +74,20 @@ function clearAllMarkers(listEl: HTMLElement): void {
 
 // --- controller -------------------------------------------------------
 
-// Wires drag-to-reorder and drag-to-reschedule inside `listEl`.
 export function createDragController({
   listEl,
   onRowDrop,
   onGroupDrop,
 }: DragControllerOptions): DragController {
-  // Index of the row being dragged, into the caller's array. Null whenever no
-  // drag is in flight, which is also how every handler cheaply opts out.
+  // Index into the caller's array, null when no drag is in flight -- which is
+  // also how every handler opts out.
   let draggedIndex: number | null = null;
 
   function beginDrag(event: DragEvent, row: HTMLElement, index: number): void {
     draggedIndex = index;
     row.classList.add(CLASS.DRAGGING);
-    // dataTransfer is null on a jsdom-synthesised event, and the drag state
-    // above still has to be set for the rest of the gesture to work -- so the
-    // guard sits here rather than at the top of the function.
+    // Guarded here, not at the top: the drag state above still has to be set
+    // even when dataTransfer is absent.
     if (!event.dataTransfer) {
       return;
     }
@@ -110,8 +102,7 @@ export function createDragController({
     clearAllMarkers(listEl);
   }
 
-  // Without preventDefault the browser refuses the drop outright, so every
-  // accepted hover has to say so explicitly.
+  // Without preventDefault the browser refuses the drop outright.
   function acceptHover(event: DragEvent): void {
     event.preventDefault();
     if (event.dataTransfer) {
@@ -138,9 +129,8 @@ export function createDragController({
     }
     event.preventDefault();
 
-    // Read the side back off the marker rather than recomputing it: drop fires
-    // at the same position as the last dragover, so the marker is the placement
-    // the user actually saw.
+    // Read off the marker rather than recomputed, so the drop lands where the
+    // user actually saw it.
     const side: DropSide = row.classList.contains(CLASS.DROP_AFTER) ? "after" : "before";
     const from = draggedIndex;
 
@@ -173,9 +163,8 @@ export function createDragController({
   }
 
   return {
-    // Makes one rendered row both a drag source and a drop target. `dayKey` is
-    // the day of the group the row is rendered in (null when unscheduled), so
-    // the controller never has to walk the DOM to find it.
+    // Both drag source and drop target. `dayKey` is passed in so the
+    // controller never walks the DOM to find it.
     attachRow(row, index, dayKey) {
       row.addEventListener("dragstart", (event) => beginDrag(event, row, index));
       row.addEventListener("dragend", () => endDrag(row));
@@ -184,15 +173,14 @@ export function createDragController({
       row.addEventListener("drop", (event) => dropOnRow(event, row, index, dayKey));
     },
 
-    // Makes a group header a drop target that reschedules without reordering.
+    // A drop target that reschedules without reordering.
     attachGroupHeader(head, dayKey) {
       head.addEventListener("dragover", (event) => hoverGroup(event, head));
       head.addEventListener("dragleave", () => clearMarker(head));
       head.addEventListener("drop", (event) => dropOnGroup(event, dayKey));
     },
 
-    // A draggable ancestor swallows text selection, so inline editing turns the
-    // row's drag off for as long as the input is open.
+    // A draggable ancestor swallows text selection, so editing turns it off.
     suspendRow(row) {
       row.draggable = false;
     },

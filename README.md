@@ -187,7 +187,6 @@ there is no manual reload step. Two other scripts are worth knowing:
 | `npm run dev` | Build, launch a browser, and reload on save |
 | `npm run build` | Build `.output/chrome-mv3/` for loading or shipping |
 | `npm run check` | Type-check everything with `tsc --noEmit` |
-| `npm run verify` | Run the verification scripts in `verify/` |
 | `npm run zip` | Package the build for store submission |
 
 ---
@@ -267,19 +266,3 @@ added under `src/` instead of `entrypoints/` is simply never built.
 | `src/features/settings.ts` | The settings panel and its controls |
 | `src/features/export.ts` | CSV export |
 | `public/icons/` | Toolbar icons at 16 / 32 / 48 / 128 px, copied to the output root |
-| `verify/` | Verification scripts, run by `npm run verify` |
-
-### Verification
-
-There is no test framework. `verify/` holds plain `node` scripts that drive the
-real files and assert with `node:assert`:
-
-```bash
-npm run verify
-```
-
-Node 22+ strips TypeScript types natively, so these run against the `.ts`
-sources with no build step. Each script is a separate `node` process on purpose —
-`src/features/priority.ts` captures its menu element at import time, and module
-caching means a second boot of the popup in one process would drive the first
-boot's DOM with no error.

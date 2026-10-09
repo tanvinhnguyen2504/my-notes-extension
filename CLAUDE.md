@@ -49,7 +49,6 @@ entry points, and nothing imports upward.
 | `src/features/settings.ts` | The settings panel: its open state and its controls |
 | `src/features/export.ts` | CSV export of the list |
 | `public/icons/` | Copied verbatim to the output root |
-| `verify/` | Plain-node verification scripts. See Testing |
 
 `entrypoints/popup.html` loads `src/popup.ts` with `type="module"`, and Vite
 bundles that entrypoint and everything it imports. Adding a module to the popup
@@ -78,8 +77,7 @@ untouched under plain `node` — see Testing.
   `typeof window`. Anything added there that touches `window` breaks the worker
   on the empty-storage path, silently. **The compiler will not catch this:**
   `lib` includes `DOM`, so `window` type-checks in `utils.ts` regardless. The
-  guard is the only protection, and `verify/utils.ts` is the only thing that
-  tests it.
+  guard is the only protection, and nothing tests it.
 - **`reminder.ts` never imports `popup.ts`.** `popup.ts` calls `el()` at module
   top level and runs its wiring on load, so it throws on any page without the
   popup's ids — now with the id named in the message rather than as a null
@@ -88,8 +86,8 @@ untouched under plain `node` — see Testing.
 - **Types are derived, never restated.** `Priority` is
   `(typeof PRIORITY)[keyof typeof PRIORITY]`, so adding a level to the const
   object widens the type automatically. Never a TS `enum`: non-erasable syntax
-  breaks the verification scripts, and `erasableSyntaxOnly` makes that a
-  compile error rather than a surprise.
+  would stop the sources running under plain `node`, which `erasableSyntaxOnly`
+  turns into a compile error.
 - **`normalizeState()` is the type boundary.** It takes `unknown` and returns
   `State`. Nothing downstream casts, and nothing upstream is trusted. If a
   shape cannot be proven, the fix goes in `normalizeState`, not in a cast at
@@ -215,17 +213,16 @@ callbacks, which stay inline but still take a block body.
   be woken for it.
 - **Module-level element capture makes the popup un-rebootable in one process.**
   `priority.ts` captures `#priority-menu` at import time, and Node caches ES
-  modules by specifier — so a jsdom test that boots the popup twice in one
-  process has the second boot driving the first boot's DOM, with no error. One
-  boot per process; `verify/popup.ts` and `verify/drag.ts` are separate `node`
-  invocations for exactly this reason.
+  modules by specifier — so anything that boots the popup twice in one process
+  has the second boot driving the first boot's DOM, with no error. One boot per
+  process.
 - **`hasChromeStorage` in `utils.ts` is a module-load-time snapshot.** It is
   computed once, when the module is first evaluated. Because ES imports are
   hoisted, a test that installs a `chrome` stub in its own file body arrives too
-  late: `loadState()` has already latched the `localStorage` path, and every
-  assertion about stored state then passes vacuously against an empty list. This
-  is why `verify/chrome-global.ts` exists as a separate module imported first.
-  Harmless in production, invisible in a test.
+  late: `loadState()` has already latched the `localStorage` path. Harmless in
+  production, because a worker always has `chrome` — but it means a stub has to
+  be installed from a module that loads *before* `utils.ts`, not from the file
+  doing the stubbing.
 - **Entrypoint files are imported by WXT at build time, in Node.** Anything
   touching `chrome` at the top level of `entrypoints/background.ts` breaks
   `wxt build`. The listeners therefore live inside `defineBackground`'s
@@ -233,49 +230,30 @@ callbacks, which stay inline but still take a block body.
   after an `await` can miss the very event that woke the worker. The two
   mistakes fail in opposite directions at opposite times: one at build, one
   silently at runtime.
-- **`imports: false` is load-bearing.** WXT can auto-inject `defineBackground`
-  and friends as globals. Turning that back on would make `entrypoints/*.ts`
-  un-importable by the verification scripts, which fail at import time with
-  `defineBackground is not defined`.
+- **`imports: false`.** WXT can auto-inject `defineBackground` and friends as
+  globals. It is off so that nothing in this codebase is an identifier you
+  cannot grep for, and so entrypoints stay importable by plain `node`.
 
 ## Testing
 
-There is still no test framework. Verification is `verify/`: plain `node`
-scripts that drive the real files and assert with `node:assert`.
+There is no test framework and no test suite. `npm run check` (`tsc --noEmit`)
+is the only automated gate; everything else is checked by loading
+`.output/chrome-mv3/` in Chrome and using it.
 
-```bash
-npm run verify   # all five, each in its own process
-npm run check    # tsc --noEmit
-```
-
-Node 22+ strips TypeScript types natively, so these run against the `.ts`
-sources with no build step and no transpiler. Two constraints follow, and
-neither is optional:
+Two tsconfig choices exist so the sources stay runnable under plain `node`
+without a transpile step, which is what any future test would depend on:
 
 - **`erasableSyntaxOnly` is on.** `enum`, `namespace`, parameter properties and
-  `declare` fields compile fine under WXT and crash under plain `node`. The flag
-  turns that runtime surprise into a compile error.
+  `declare` fields compile under WXT but crash under plain `node`.
 - **Imports carry explicit `.ts` extensions**, and WXT's `@/` alias is unused.
   Node's resolver needs the real on-disk filename and knows nothing about the
   alias; Vite resolves `.ts` specifiers without complaint.
 
-| Script | Covers |
-| --- | --- |
-| `verify/utils.ts` | `utils.ts` with **no** `window`, `document` or stubs at all — the service worker's environment, and the only test of the `typeof window` guard |
-| `verify/export.ts` | `toCsv` and `insertionIndex`: the DOM-free halves of `features` and `ui` |
-| `verify/background.ts` | The entrypoint with a hand-rolled `chrome` stub and no DOM. Listener registration, `syncAlarm`'s don't-push-the-alarm-later behaviour, and each reason the window does not open |
-| `verify/popup.ts` | One jsdom boot of the real `popup.html`: add, toggle, edit, delete, mark-all, two-step clear, settings |
-| `verify/drag.ts` | A second boot, own process: the real `dragstart` → `dragover` → `drop` sequence, with and without `dataTransfer` |
-
-Three things that matter when writing these:
-
-- Dispatch the **real event sequence**, not the convenient one. Dispatching
-  `dblclick` alone hides the two-clicks-first bug described above.
-- jsdom events have no `dataTransfer`; `dragEvent()` in `verify/jsdom-boot.ts`
-  stubs it when asked and omits it otherwise, because both paths are real.
-- `instanceof` checks are realm-sensitive. `popup.ts` narrows `event.target`
-  with `instanceof Node` / `Element`, so `jsdom-boot.ts` has to copy jsdom's
-  constructors onto `globalThis`, not just `window` and `document`.
+If a suite is ever added, the constraints that mattered last time: dispatch the
+real event sequence rather than the convenient one (`dblclick` alone hides the
+two-clicks-first bug); jsdom events carry no `dataTransfer`; `instanceof` is
+realm-sensitive, so jsdom's constructors have to go on `globalThis`, not just
+`window` and `document`; and the popup can only be booted once per process.
 
 ## Loose ends
 

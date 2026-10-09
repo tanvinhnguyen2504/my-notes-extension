@@ -1,18 +1,6 @@
-import type {
-  DayGroup,
-  DayGroupEntry,
-  DayGroupLabel,
-  DayKey,
-  Item,
-  Priority,
-  Settings,
-  State,
-  Theme,
-  TimeOfDay,
-  Width,
-} from "./types.ts";
+import { DayGroup, DayGroupEntry, DayGroupLabel, DayKey, Item, Priority, Settings, State, Theme, TimeOfDay, Width } from './types.ts';
 
-export const STORAGE_KEY = "checklist.v1";
+export const STORAGE_KEY = 'checklist.v1';
 
 export const PRIORITY = {
   LOW: 0,
@@ -21,47 +9,41 @@ export const PRIORITY = {
 } as const;
 
 export const THEME = {
-  LIGHT: "light",
-  DARK: "dark",
+  LIGHT: 'light',
+  DARK: 'dark',
 } as const;
 
 export const WIDTH = {
-  COMPACT: "compact",
-  WIDE: "wide",
+  COMPACT: 'compact',
+  WIDE: 'wide',
 } as const;
 
-// Preferences that are not part of the list itself. `theme` is deliberately NOT
-// in here: it predates this object, and moving it would reset the saved theme
-// for everyone already using the extension.
+// `theme` is deliberately NOT in here: it predates this object, and moving it
+// would reset the saved theme for every existing user.
 export const DEFAULT_SETTINGS: Settings = {
   width: WIDTH.COMPACT,
   reminder: {
     enabled: false,
-    time: "09:00",
+    time: '09:00',
   },
 };
 
-// Anything read back from storage arrives as `unknown`. This is the one place
-// that walks it, so the narrowing lives here rather than at every field access.
+// Storage returns `unknown`; this is the one place that walks it.
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+  return typeof value === 'object' && value !== null;
 }
 
-const hasChromeStorage =
-  typeof chrome !== "undefined" && !!chrome.storage && !!chrome.storage.local;
+const hasChromeStorage = typeof chrome !== 'undefined' && !!chrome.storage && !!chrome.storage.local;
 
 export function loadState(): Promise<State> {
   return new Promise<State>((resolve) => {
     if (hasChromeStorage) {
-      chrome.storage.local.get([STORAGE_KEY], (result) =>
-        resolve(normalizeState(result && result[STORAGE_KEY]))
-      );
+      chrome.storage.local.get([STORAGE_KEY], (result) => resolve(normalizeState(result && result[STORAGE_KEY])));
       return;
     }
     try {
-      // getItem returns null when unset, and JSON.parse(null) coerces to
-      // "null" at runtime but not in the type system -- hence the ?? "null".
-      resolve(normalizeState(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null")));
+      // JSON.parse(null) coerces at runtime but not in the type system.
+      resolve(normalizeState(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null')));
     } catch (_) {
       resolve(normalizeState(null));
     }
@@ -80,20 +62,18 @@ export function saveState(state: State): void {
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-// A reminder time is a local "HH:MM" string for the same reason dueDate is a day
-// key: it is a time of day, not an instant, and <input type="time"> reads and
-// writes exactly this format.
+// A time of day, not an instant -- same reasoning as dueDate, and exactly what
+// <input type="time"> reads and writes.
 export function isTimeOfDay(value: unknown): value is TimeOfDay {
-  return typeof value === "string" && TIME_PATTERN.test(value);
+  return typeof value === 'string' && TIME_PATTERN.test(value);
 }
 
 export function isPriority(value: unknown): value is Priority {
   return value === PRIORITY.LOW || value === PRIORITY.NORMAL || value === PRIORITY.HIGH;
 }
 
-// Always returns a complete settings object. Callers must never spread a partial
-// saved value into live state -- a half-populated `reminder` would read as
-// undefined at the point it matters and fail silently.
+// Always complete. Never spread a partial saved value into live state: a missing
+// nested field reads as undefined exactly where it matters.
 export function normalizeSettings(saved: unknown): Settings {
   const source = isRecord(saved) ? saved : {};
   const reminder = isRecord(source.reminder) ? source.reminder : {};
@@ -114,12 +94,11 @@ export function normalizeState(saved: unknown): State {
   return {
     items: saved.items.map((raw: unknown): Item => {
       const item = isRecord(raw) ? raw : {};
-      // Validated against the three real levels rather than taken as any
-      // number: a stored 7 used to survive as 7 and then match no CSS rule and
-      // no menu entry. This is the gate that was supposed to catch that.
+      // Clamped to the three real levels: a stored 7 used to survive and then
+      // match no CSS rule and no menu entry.
       const priority = Number(item.priority);
       return {
-        text: String(item.text ?? ""),
+        text: String(item.text ?? ''),
         done: !!item.done,
         priority: isPriority(priority) ? priority : PRIORITY.LOW,
         updatedAt: Number(item.updatedAt) || null,
@@ -139,7 +118,7 @@ export function parseDraft(rawText: string): Item | null {
   }
 
   const { text: withoutDay, dueDate } = extractDayToken(trimmed);
-  const isHighPriority = withoutDay.startsWith("!");
+  const isHighPriority = withoutDay.startsWith('!');
   const text = (isHighPriority ? withoutDay.slice(1) : withoutDay).trim();
   if (!text) {
     return null;
@@ -156,36 +135,28 @@ export function parseDraft(rawText: string): Item | null {
 }
 
 // Menu order: most urgent first. Drives both the popover and its labels.
-export const PRIORITY_ORDER = [
-  PRIORITY.HIGH,
-  PRIORITY.NORMAL,
-  PRIORITY.LOW,
-] as const;
+export const PRIORITY_ORDER = [PRIORITY.HIGH, PRIORITY.NORMAL, PRIORITY.LOW] as const;
 
 export const PRIORITY_LABELS: Record<Priority, string> = {
-  [PRIORITY.HIGH]: "HIGH",
-  [PRIORITY.NORMAL]: "MEDIUM",
-  [PRIORITY.LOW]: "LOW",
+  [PRIORITY.HIGH]: 'HIGH',
+  [PRIORITY.NORMAL]: 'MEDIUM',
+  [PRIORITY.LOW]: 'LOW',
 };
 
-// Orders the list HIGH -> MEDIUM -> LOW. Ranked through PRIORITY_ORDER rather than
-// the raw constants, so the list order and the menu order cannot drift apart and
-// the sort does not quietly depend on HIGH being the largest number.
+// Ranked through PRIORITY_ORDER, not the raw constants, so list and menu order
+// cannot drift and the sort does not depend on HIGH being the largest number.
 //
-// Array.prototype.sort is stable, which is the property that matters here: tasks
-// of equal priority keep the order the user put them in. It is also why this needs
-// no per-group logic -- groupByDay orders the *sections* by day and renders each
-// section's items in array order, so one sort of the flat array leaves every group
-// internally priority-ordered.
+// sort is stable, so equal-priority tasks keep the user's order -- which is also
+// why no per-group logic is needed: groupByDay renders each section in array
+// order, so one sort of the flat array leaves every group ordered.
 //
-// Returns a new array, like moveItem() and setAllDone(). Stamps nothing: this
-// changes list position, not the items.
+// Returns a new array and stamps nothing: this changes position, not items.
 export function sortByPriority(items: Item[]): Item[] {
   const rank = (item: Item) => PRIORITY_ORDER.indexOf(item.priority);
   return [...items].sort((a, b) => rank(a) - rank(b));
 }
 
-export function nextTheme(theme: Theme): Theme {
+export function switchTheme(theme: Theme): Theme {
   return theme === THEME.LIGHT ? THEME.DARK : THEME.LIGHT;
 }
 
@@ -193,18 +164,12 @@ export function nextWidth(width: Width): Width {
   return width === WIDTH.WIDE ? WIDTH.COMPACT : WIDTH.WIDE;
 }
 
-// The `typeof window` guard is load-bearing: background.ts imports this module,
-// and a service worker has no window at all. Without it, normalizeState() throws
-// a ReferenceError inside the worker on the empty-storage path.
-//
-// Note that the compiler cannot help here. tsconfig includes lib DOM, so `window`
-// type-checks in this file regardless -- the guard is the only thing standing
-// between this module and a silent worker failure.
+// The `typeof window` guard is load-bearing: a service worker has no window, and
+// without it normalizeState() throws inside the worker on the empty-storage
+// path. The compiler cannot help -- lib DOM makes `window` type-check here
+// regardless, so the guard is the only protection.
 export function preferredTheme(): Theme {
-  const prefersDark =
-    typeof window !== "undefined" &&
-    !!window.matchMedia &&
-    window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const prefersDark = typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   return prefersDark ? THEME.DARK : THEME.LIGHT;
 }
 
@@ -219,14 +184,9 @@ export function progressPercent(items: Item[]): number {
   return Math.round((countDone(items) / items.length) * 100);
 }
 
-// Leading-edge debounce: runs fn on the first call, then ignores further calls
-// until `wait` ms of quiet have passed. Leading rather than trailing because
-// callers here read live DOM values -- deferring the call would read the input
-// as it is later, not as it was when the user acted.
-export function debounce<A extends unknown[]>(
-  fn: (...args: A) => void,
-  wait: number
-): (...args: A) => void {
+// Leading-edge: runs fn immediately, then ignores calls until `wait` ms of quiet.
+// Leading because callers read live DOM values, which deferring would re-read.
+export function debounce<A extends unknown[]>(fn: (...args: A) => void, wait: number): (...args: A) => void {
   let timer: ReturnType<typeof setTimeout> | null = null;
   return (...args: A) => {
     const isIdle = timer === null;
@@ -240,22 +200,17 @@ export function debounce<A extends unknown[]>(
   };
 }
 
-// What the reminder is for: work that is flagged HIGH and still outstanding.
-// Anything done no longer needs reminding about.
+// What the reminder is for: HIGH and still outstanding.
 export function getHighPriorityItems(items: Item[]): Item[] {
   return items.filter((item) => item.priority === PRIORITY.HIGH && !item.done);
 }
 
-// Epoch ms of the next time the clock reads `time` ("HH:MM"). Today if that is
-// still ahead, otherwise tomorrow. Local time throughout -- a reminder at 09:00
-// means 09:00 where the user is, which is the same reasoning that makes dueDate a
-// day key rather than a timestamp.
+// Epoch ms of the next time the clock reads `time`: today if still ahead, else
+// tomorrow. Local throughout -- 09:00 means 09:00 where the user is.
 export function nextReminderTime(time: TimeOfDay, from: Date = new Date()): number {
-  // Read by index rather than destructured: under noUncheckedIndexedAccess a
-  // destructured element is `number | undefined`, and defaulting it would change
-  // what a malformed time does. Number(undefined) is NaN, which is exactly what
-  // the untyped version produced.
-  const parts = time.split(":");
+  // Indexed, not destructured: defaulting a `number | undefined` would change
+  // what a malformed time does. Number(undefined) is NaN, as before.
+  const parts = time.split(':');
   const hours = Number(parts[0]);
   const minutes = Number(parts[1]);
   const next = new Date(from);
@@ -270,32 +225,29 @@ export function isAllDone(items: Item[]): boolean {
   return items.length > 0 && countDone(items) === items.length;
 }
 
-// Drives both halves of the mark-all / unmark-all toggle. Items already in the
-// target state are returned untouched so a no-op cannot move their timestamp.
+// Both halves of the mark-all toggle. Items already in the target state are
+// returned untouched, so a no-op cannot move their timestamp.
 export function setAllDone(items: Item[], done: boolean): Item[] {
-  return items.map((item) =>
-    item.done === done ? item : { ...item, done, updatedAt: Date.now() }
-  );
+  return items.map((item) => (item.done === done ? item : { ...item, done, updatedAt: Date.now() }));
 }
 
 // Moves the item at `from` so it lands before position `to`, where `to` is an
 // index in the ORIGINAL array. Returns a new array; unchanged if it is a no-op.
 export function moveItem(items: Item[], from: number, to: number): Item[] {
   if (from < 0 || from >= items.length) {
-    return items
-  };
+    return items;
+  }
   if (to < 0 || to > items.length) {
-    return items
-  };
+    return items;
+  }
   if (to === from || to === from + 1) {
-    return items
-  };
+    return items;
+  }
 
   const next = items.slice();
   const moved = next.splice(from, 1)[0];
-  // Unreachable: the bounds check above guarantees the splice removed an item.
-  // Stated as a guard rather than a non-null assertion so it stays true if the
-  // bounds check is ever changed.
+  // Unreachable given the bounds check, but a guard rather than an assertion so
+  // it stays true if that check changes.
   if (moved === undefined) {
     return items;
   }
@@ -303,47 +255,44 @@ export function moveItem(items: Item[], from: number, to: number): Item[] {
   return next;
 }
 
-// Items saved before timestamps existed have no updatedAt; they render blank
-// rather than claiming a made-up date.
+// Items predating updatedAt render blank rather than a made-up date.
 export function formatDate(timestamp: number | null): string {
   if (!timestamp) {
-    return "";
+    return '';
   }
   const date = new Date(timestamp);
-  const pad = (value: number) => String(value).padStart(2, "0");
+  const pad = (value: number) => String(value).padStart(2, '0');
   return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
 }
 
-// Records an edit to an item in place. Every content or state change goes
-// through here so the displayed date cannot drift from reality.
+// Every content or state change goes through here, so the displayed date cannot
+// drift.
 export function touchItem(item: Item): Item {
   item.updatedAt = Date.now();
   return item;
 }
 
 // --- days -------------------------------------------------------------
-// Days are stored as "YYYY-MM-DD" strings, not timestamps. A timestamp is a
-// point in time and would land on a different calendar day depending on the
-// reader's timezone; an assigned day has no time component at all.
+// Stored as "YYYY-MM-DD", not timestamps: an assigned day has no time
+// component, and an instant would shift calendar day by timezone.
 
 const DAY_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const DAY_TOKEN_PATTERN = /(?:^|\s)@(\S+)/i;
 
-// Shape check for a value already known to be a string. Separate from isDayKey
-// because DayKey is an alias for string: as a type predicate, isDayKey narrows
-// the *failing* branch of an already-string value to `never`, which breaks any
-// caller that keeps using the value after the check -- see parseDayInput.
+// For values already known to be strings. Separate from isDayKey because DayKey
+// aliases string, so the predicate narrows a failing already-string value to
+// `never` -- which broke parseDayInput.
 function matchesDayKey(value: string): boolean {
   return DAY_KEY_PATTERN.test(value);
 }
 
 // For values off storage or the DOM, where the type really is unknown.
 export function isDayKey(value: unknown): value is DayKey {
-  return typeof value === "string" && matchesDayKey(value);
+  return typeof value === 'string' && matchesDayKey(value);
 }
 
 export function toDayKey(date: Date): DayKey {
-  const pad = (value: number) => String(value).padStart(2, "0");
+  const pad = (value: number) => String(value).padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
@@ -352,7 +301,7 @@ export function todayKey(): DayKey {
 }
 
 export function shiftDayKey(key: DayKey, days: number): DayKey {
-  const parts = key.split("-");
+  const parts = key.split('-');
   const year = Number(parts[0]);
   const month = Number(parts[1]);
   const day = Number(parts[2]);
@@ -361,43 +310,38 @@ export function shiftDayKey(key: DayKey, days: number): DayKey {
 
 export function formatDayKey(key: string): string {
   if (!isDayKey(key)) {
-    return "";
+    return '';
   }
-  // isDayKey has already matched /^\d{4}-\d{2}-\d{2}$/, so all three parts
-  // exist; the defaults are unreachable and only satisfy the compiler.
-  const [year = "", month = "", day = ""] = key.split("-");
+  // isDayKey has matched, so all three parts exist; the defaults only satisfy
+  // the compiler.
+  const [year = '', month = '', day = ''] = key.split('-');
   return `${day}/${month}/${year}`;
 }
 
-// Row-width version of formatDayKey: the year is almost always the current one
-// and the row has no space to spend restating it.
+// Row-width: the year is almost always the current one and costs space.
 export function formatDayKeyShort(key: string): string {
   if (!isDayKey(key)) {
-    return "";
+    return '';
   }
-  const [, month = "", day = ""] = key.split("-");
+  const [, month = '', day = ''] = key.split('-');
   return `${day}/${month}`;
 }
 
-// "TODAY" / "TOMORROW" / "YESTERDAY" / "OVERDUE" read faster than a bare date
-// when you are scanning for what to do now.
-export function dayGroupLabel(
-  key: DayKey | null,
-  reference: DayKey = todayKey()
-): DayGroupLabel {
+// Words read faster than dates when scanning for what to do now.
+export function dayGroupLabel(key: DayKey | null, reference: DayKey = todayKey()): DayGroupLabel {
   if (!isDayKey(key)) {
-    return "UNSCHEDULED";
+    return 'UNSCHEDULED';
   }
   if (key === reference) {
-    return "TODAY";
+    return 'TODAY';
   }
   if (key === shiftDayKey(reference, 1)) {
-    return "TOMORROW";
+    return 'TOMORROW';
   }
   if (key === shiftDayKey(reference, -1)) {
-    return "YESTERDAY";
+    return 'YESTERDAY';
   }
-  return key < reference ? "OVERDUE" : "UPCOMING";
+  return key < reference ? 'OVERDUE' : 'UPCOMING';
 }
 
 // Accepts "today", "tomorrow", "yesterday", "DD/MM" and "DD/MM/YYYY".
@@ -406,13 +350,13 @@ export function parseDayInput(value: unknown): DayKey | null {
   if (!text) {
     return null;
   }
-  if (text === "today") {
+  if (text === 'today') {
     return todayKey();
   }
-  if (text === "tomorrow") {
+  if (text === 'tomorrow') {
     return shiftDayKey(todayKey(), 1);
   }
-  if (text === "yesterday") {
+  if (text === 'yesterday') {
     return shiftDayKey(todayKey(), -1);
   }
   if (matchesDayKey(text)) {
@@ -450,12 +394,11 @@ export function extractDayToken(text: string): { text: string; dueDate: DayKey |
   if (!dueDate) {
     return { text, dueDate: null };
   }
-  return { text: text.replace(match[0], " ").replace(/\s+/g, " ").trim(), dueDate };
+  return { text: text.replace(match[0], ' ').replace(/\s+/g, ' ').trim(), dueDate };
 }
 
-// Section order, top to bottom. Today leads because it is the only section you
-// almost always want to see without scrolling; a missed day still needs acting
-// on, so OVERDUE sits directly under it rather than being buried.
+// Section order. Today leads because it is the one section you always want
+// without scrolling; OVERDUE sits directly under it rather than being buried.
 const RANK = { TODAY: 0, OVERDUE: 1, UPCOMING: 2, UNSCHEDULED: 3 } as const;
 
 function groupRank(key: string, reference: DayKey): number {
@@ -468,13 +411,13 @@ function groupRank(key: string, reference: DayKey): number {
   return key < reference ? RANK.OVERDUE : RANK.UPCOMING;
 }
 
-// Groups items for display while keeping each item's index into the original
-// array, because every row handler addresses state.items by index.
+// Keeps each item's index into the original array: row handlers address
+// state.items by index.
 export function groupByDay(items: Item[], reference: DayKey = todayKey()): DayGroup[] {
   const groups = new Map<string, DayGroupEntry[]>();
 
   items.forEach((item, index) => {
-    const key = isDayKey(item.dueDate) ? item.dueDate : "";
+    const key = isDayKey(item.dueDate) ? item.dueDate : '';
     let entries = groups.get(key);
     if (!entries) {
       entries = [];
@@ -499,8 +442,8 @@ export function groupByDay(items: Item[], reference: DayKey = todayKey()): DayGr
       if (a.key === b.key) {
         return 0;
       }
-      // Soonest first, except inside OVERDUE where the most recently missed day
-      // is the one you are most likely to still act on.
+      // Soonest first, except in OVERDUE where the most recently missed day is
+      // the one you are likeliest to act on.
       const ascending = a.key < b.key ? -1 : 1;
       return groupRank(a.key, reference) === RANK.OVERDUE ? -ascending : ascending;
     });

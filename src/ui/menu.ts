@@ -1,17 +1,12 @@
-// The popover menu shared by the row's entity controls.
+// The popover menu shared by the row's controls. Owns the menu DOM, its
+// position, and which trigger opened it. Knows nothing about todo items: a
+// caller passes a trigger and entries, and gets keyboard handling and dismissal.
 //
-// This module owns the menu DOM, where it is positioned, and the one piece of
-// mutable state a popover needs -- which trigger opened it. It knows nothing
-// about todo items: a caller hands it a trigger element and a list of entries,
-// and gets keyboard handling and dismissal for free.
-//
-// Only one menu is open at a time, which is why the state can live here as
-// module scope rather than being threaded through every caller.
+// Only one menu is open at a time, which is why that state lives at module
+// scope rather than being threaded through callers.
 
-// `priority` is the only entity-shaped field, and it is a number rather than a
-// Priority on purpose: this module must not know what the levels mean. Importing
-// the Priority type here would be the first crack in that -- see CLAUDE.md on
-// the layering rule.
+// `priority` is a plain number, not a Priority: this module must not know what
+// the levels mean. See the layering rule in CLAUDE.md.
 export interface MenuEntry {
   label: string;
   priority?: number | null;
@@ -31,8 +26,7 @@ export function menuAnchor(): HTMLElement | null {
 }
 
 export function closeMenu(): void {
-  // One guard for both handles rather than two: they are set and cleared
-  // together in openMenu, and saying so here is what documents that invariant.
+  // One guard for both: they are set and cleared together in openMenu.
   if (!anchorEl || !menuEl) {
     return;
   }
@@ -43,9 +37,8 @@ export function closeMenu(): void {
   menuEl = null;
 }
 
-// `priority` is the one entity-shaped hook in an otherwise generic menu: the
-// CSS colours the swatch from .menu-item[data-priority], and that attribute
-// name is a contract with popup.css. Entries without one render no swatch.
+// data-priority is a contract with popup.css, which colours the swatch from it.
+// Entries without one render no swatch.
 function buildMenuItem({
   label,
   priority = null,
@@ -78,8 +71,8 @@ function buildMenuItem({
   return item;
 }
 
-// Anchors the menu to its trigger, flipping above when there is no room below.
-// Fixed positioning so the scrolling list cannot clip it.
+// Flips above when there is no room below. Fixed positioning, so the scrolling
+// list cannot clip it.
 function positionMenu(el: HTMLElement, triggerEl: HTMLElement): void {
   const anchor = triggerEl.getBoundingClientRect();
   const menu = el.getBoundingClientRect();
