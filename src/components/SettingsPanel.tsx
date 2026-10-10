@@ -50,7 +50,7 @@ export function SettingsPanel({
         <SettingSwitch
           id="set-theme"
           label="Dark mode"
-          checked={state.theme === THEME.DARK}
+          checked={state.settings.theme === THEME.DARK}
           onToggle={onToggleTheme}
         />
         <SettingSwitch

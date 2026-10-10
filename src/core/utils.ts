@@ -1,7 +1,5 @@
-import { extractDayToken, isDayKey, todayKey } from './day_utils.ts';
-import { Item, Priority, Settings, State, Theme, TimeOfDay, Width } from './types.ts';
-
-export const STORAGE_KEY = 'checklist.v1';
+import { extractDayToken, todayKey } from './day_utils.ts';
+import { Priority, Settings, Task, Theme, TimeOfDay, Width } from './types.ts';
 
 export const PRIORITY = {
   LOW: 0,
@@ -19,9 +17,9 @@ export const WIDTH = {
   WIDE: 'wide',
 } as const;
 
-// `theme` is deliberately NOT in here: it predates this object, and moving it
-// would reset the saved theme for every existing user.
-export const DEFAULT_SETTINGS: Settings = {
+// Only the fallbacks normalizeSettings needs. `theme` is resolved there rather
+// than here, because its default is the OS preference, not a constant.
+export const DEFAULT_SETTINGS: Omit<Settings, 'theme'> = {
   width: WIDTH.COMPACT,
   reminder: {
     enabled: false,
@@ -30,35 +28,8 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 // Storage returns `unknown`; this is the one place that walks it.
-function isRecord(value: unknown): value is Record<string, unknown> {
+export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
-}
-
-const hasChromeStorage = typeof chrome !== 'undefined' && !!chrome.storage && !!chrome.storage.local;
-
-export function loadState(): Promise<State> {
-  return new Promise<State>((resolve) => {
-    if (hasChromeStorage) {
-      chrome.storage.local.get([STORAGE_KEY], (result) => resolve(normalizeState(result && result[STORAGE_KEY])));
-      return;
-    }
-    try {
-      // JSON.parse(null) coerces at runtime but not in the type system.
-      resolve(normalizeState(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null')));
-    } catch (_) {
-      resolve(normalizeState(null));
-    }
-  });
-}
-
-export function saveState(state: State): void {
-  if (hasChromeStorage) {
-    chrome.storage.local.set({ [STORAGE_KEY]: state });
-    return;
-  }
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch (_) {}
 }
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -84,50 +55,8 @@ export function isPriority(value: unknown): value is Priority {
   return value === PRIORITY.LOW || value === PRIORITY.NORMAL || value === PRIORITY.HIGH;
 }
 
-// Always complete. Never spread a partial saved value into live state: a missing
-// nested field reads as undefined exactly where it matters.
-export function normalizeSettings(saved: unknown): Settings {
-  const source = isRecord(saved) ? saved : {};
-  const reminder = isRecord(source.reminder) ? source.reminder : {};
-  return {
-    width: source.width === WIDTH.WIDE ? WIDTH.WIDE : WIDTH.COMPACT,
-    reminder: {
-      enabled: !!reminder.enabled,
-      time: isTimeOfDay(reminder.time) ? reminder.time : DEFAULT_SETTINGS.reminder.time,
-    },
-  };
-}
-
-// Accepts anything read back from storage and returns a usable state object.
-export function normalizeState(saved: unknown): State {
-  if (!isRecord(saved) || !Array.isArray(saved.items)) {
-    return { items: [], theme: preferredTheme(), settings: normalizeSettings(null) };
-  }
-  return {
-    items: saved.items.map((raw: unknown): Item => {
-      const item = isRecord(raw) ? raw : {};
-      // Clamped to the three real levels: a stored 7 used to survive and then
-      // match no CSS rule and no menu entry.
-      const priority = Number(item.priority);
-      return {
-        // Assigned only when absent. Regenerating on every load would be worse
-        // than having no id at all: React would see a wholly new list each
-        // time storage was read and remount every row.
-        id: typeof item.id === 'string' && item.id ? item.id : newId(),
-        text: String(item.text ?? ''),
-        done: !!item.done,
-        priority: isPriority(priority) ? priority : PRIORITY.LOW,
-        updatedAt: Number(item.updatedAt) || null,
-        dueDate: isDayKey(item.dueDate) ? item.dueDate : null,
-      };
-    }),
-    theme: saved.theme === THEME.DARK ? THEME.DARK : THEME.LIGHT,
-    settings: normalizeSettings(saved.settings),
-  };
-}
-
 // "!buy milk" -> a high-priority item. Returns null for empty input.
-export function parseDraft(rawText: string): Item | null {
+export function parseDraft(rawText: string): Task | null {
   const trimmed = rawText.trim();
   if (!trimmed) {
     return null;
@@ -168,8 +97,8 @@ export const PRIORITY_LABELS: Record<Priority, string> = {
 // order, so one sort of the flat array leaves every group ordered.
 //
 // Returns a new array and stamps nothing: this changes position, not items.
-export function sortByPriority(items: Item[]): Item[] {
-  const rank = (item: Item) => PRIORITY_ORDER.indexOf(item.priority);
+export function sortByPriority(items: Task[]): Task[] {
+  const rank = (item: Task) => PRIORITY_ORDER.indexOf(item.priority);
   return [...items].sort((a, b) => rank(a) - rank(b));
 }
 
@@ -190,11 +119,11 @@ export function preferredTheme(): Theme {
   return prefersDark ? THEME.DARK : THEME.LIGHT;
 }
 
-export function countDone(items: Item[]): number {
+export function countDone(items: Task[]): number {
   return items.filter((item) => item.done).length;
 }
 
-export function progressPercent(items: Item[]): number {
+export function progressPercent(items: Task[]): number {
   if (!items.length) {
     return 0;
   }
@@ -218,12 +147,12 @@ export function debounce<A extends unknown[]>(fn: (...args: A) => void, wait: nu
 }
 
 // What the reminder is for: HIGH and still outstanding.
-export function getHighPriorityItems(items: Item[]): Item[] {
+export function getHighPriorityItems(items: Task[]): Task[] {
   return items.filter((item) => item.priority === PRIORITY.HIGH && !item.done);
 }
 
-export function getUndoneItems(items: Item[]): Item[] {
-  return items.filter((item: Item) => !item.done);
+export function getUndoneItems(items: Task[]): Task[] {
+  return items.filter((item: Task) => !item.done);
 }
 
 // Epoch ms of the next time the clock reads `time`: today if still ahead, else
@@ -242,19 +171,19 @@ export function nextReminderTime(time: TimeOfDay, from: Date = new Date()): numb
   return next.getTime();
 }
 
-export function isAllDone(items: Item[]): boolean {
+export function isAllDone(items: Task[]): boolean {
   return items.length > 0 && countDone(items) === items.length;
 }
 
 // Both halves of the mark-all toggle. Items already in the target state are
 // returned untouched, so a no-op cannot move their timestamp.
-export function setAllDone(items: Item[], done: boolean): Item[] {
+export function setAllDone(items: Task[], done: boolean): Task[] {
   return items.map((item) => (item.done === done ? item : { ...item, done, updatedAt: Date.now() }));
 }
 
 // Moves the item at `from` so it lands before position `to`, where `to` is an
 // index in the ORIGINAL array. Returns a new array; unchanged if it is a no-op.
-export function moveItem(items: Item[], from: number, to: number): Item[] {
+export function moveItem(items: Task[], from: number, to: number): Task[] {
   if (from < 0 || from >= items.length) {
     return items;
   }
@@ -278,7 +207,7 @@ export function moveItem(items: Item[], from: number, to: number): Item[] {
 
 // Every content or state change goes through here, so the displayed date cannot
 // drift.
-export function touchItem(item: Item): Item {
+export function touchItem(item: Task): Task {
   item.updatedAt = Date.now();
   return item;
 }

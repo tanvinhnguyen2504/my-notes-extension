@@ -1,4 +1,4 @@
-import { DayKey, Item, Priority } from '../core/types.ts';
+import { DayKey, Task, Priority } from '../core/types.ts';
 import { PRIORITY_LABELS } from '../core/utils.ts';
 import { DueChip } from './DueChip.tsx';
 import { EditableText } from './EditableText.tsx';
@@ -10,7 +10,7 @@ import { PriorityMenu } from './PriorityMenu.tsx';
 const TRIGGER = 'hover:brightness-[0.92] aria-expanded:brightness-[0.92]';
 
 export interface PopupRowProps {
-  item: Item;
+  item: Task;
   index: number;
   dayKey: DayKey | null;
   editing: boolean;

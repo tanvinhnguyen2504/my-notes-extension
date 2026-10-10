@@ -27,16 +27,16 @@ export const CHIP_HOVER = 'hover:text-ink disabled:hover:text-dim';
 
 export interface HeaderProps {
   state: State;
+  settings: React.ReactNode;
   onMarkAll: () => void;
   onClearAll: () => void;
   onExport: () => void;
-  settings: React.ReactNode;
 }
 
 export function Header({ state, settings, onMarkAll, onClearAll, onExport }: HeaderProps): React.JSX.Element {
   const [armed, setArmed] = useState(false);
-  const isEmpty = state.items.length === 0;
-  const allDone = isAllDone(state.items);
+  const isEmpty = state.tasks.length === 0;
+  const allDone = isAllDone(state.tasks);
 
   useEffect(() => {
     if (!armed) {
@@ -62,7 +62,7 @@ export function Header({ state, settings, onMarkAll, onClearAll, onExport }: Hea
         <div className="text-[14.5px] font-medium tracking-[-0.01em]">Checklist</div>
         <div className="mt-[3px] text-[10.5px] font-normal leading-none text-dim">
           <span id="count">
-            {countDone(state.items)} of {state.items.length}
+            {countDone(state.tasks)} of {state.tasks.length}
           </span>{' '}
           done
         </div>

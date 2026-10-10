@@ -3,7 +3,7 @@
 
 import { useRef } from 'react';
 import { formatDayKeyShort, isDayKey } from '../core/day_utils.ts';
-import { DayKey, Item } from '../core/types.ts';
+import { DayKey, Task } from '../core/types.ts';
 import { DUE_CLASS } from './NoteRow.tsx';
 
 // data-unset is paired with not-done for the same reason the priority colours
@@ -14,7 +14,7 @@ const UNSET =
   'data-[unset=true]:group-data-[done=false]:shadow-[inset_0_0_0_1px_var(--color-dash)]';
 
 export interface DueChipProps {
-  item: Item;
+  item: Task;
   onPick: (dayKey: DayKey | null) => void;
 }
 

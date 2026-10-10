@@ -13,7 +13,7 @@
 // row is being edited, and whether the settings panel is open are not
 // persisted and do not belong here.
 
-import { Item, Priority, State, TimeOfDay } from './types.ts';
+import { Task, Priority, State, TimeOfDay } from './types.ts';
 import { isAllDone, isTimeOfDay, moveItem, nextWidth, parseDraft, setAllDone, sortByPriority, switchTheme } from './utils.ts';
 
 export type Action =
@@ -36,7 +36,7 @@ export type Action =
 // array when the index is out of range, which makes every index-addressed
 // action a no-op rather than a throw -- the indices come from rendered rows, so
 // this should be unreachable.
-function replaceItem(items: Item[], index: number, change: (item: Item) => Item): Item[] {
+function replaceItem(items: Task[], index: number, change: (item: Task) => Task): Task[] {
   const item = items[index];
   if (!item) {
     return items;
@@ -54,33 +54,33 @@ export function reducer(state: State, action: Action): State {
       if (!item) {
         return state;
       }
-      return { ...state, items: [...state.items, item] };
+      return { ...state, tasks: [...state.tasks, item] };
     }
 
     case 'DELETE_ITEM': {
-      if (!state.items[action.index]) {
+      if (!state.tasks[action.index]) {
         return state;
       }
       return {
         ...state,
-        items: state.items.filter((_, index) => {
+        tasks: state.tasks.filter((_, index) => {
           return index !== action.index;
         }),
       };
     }
 
     case 'TOGGLE_DONE': {
-      const items = replaceItem(state.items, action.index, (item) => {
+      const items = replaceItem(state.tasks, action.index, (item) => {
         return { ...item, done: !item.done };
       });
-      if (items === state.items) {
+      if (items === state.tasks) {
         return state;
       }
-      return { ...state, items };
+      return { ...state, tasks: items };
     }
 
     case 'RENAME_ITEM': {
-      const item = state.items[action.index];
+      const item = state.tasks[action.index];
       const text = action.text.trim();
       // An emptied field is a cancel, not a delete, and renaming to the same
       // text should not move the modified stamp.
@@ -89,27 +89,27 @@ export function reducer(state: State, action: Action): State {
       }
       return {
         ...state,
-        items: replaceItem(state.items, action.index, (current) => {
+        tasks: replaceItem(state.tasks, action.index, (current) => {
           return { ...current, text };
         }),
       };
     }
 
     case 'SET_PRIORITY': {
-      const item = state.items[action.index];
+      const item = state.tasks[action.index];
       if (!item || item.priority === action.priority) {
         return state;
       }
       // Mutate, stamp, sort -- in that order. The resort invalidates the index
       // every row handler closed over, which the following render re-derives.
-      const stamped = replaceItem(state.items, action.index, (current) => {
+      const stamped = replaceItem(state.tasks, action.index, (current) => {
         return { ...current, priority: action.priority };
       });
-      return { ...state, items: sortByPriority(stamped) };
+      return { ...state, tasks: sortByPriority(stamped) };
     }
 
     case 'SET_DAY': {
-      const item = state.items[action.index];
+      const item = state.tasks[action.index];
       // Comparing through `|| null` because an unscheduled item stores null and
       // a cleared date input reports "".
       if (!item || (item.dueDate || null) === (action.dayKey || null)) {
@@ -117,7 +117,7 @@ export function reducer(state: State, action: Action): State {
       }
       return {
         ...state,
-        items: replaceItem(state.items, action.index, (current) => {
+        tasks: replaceItem(state.tasks, action.index, (current) => {
           return { ...current, dueDate: action.dayKey || null };
         }),
       };
@@ -126,27 +126,27 @@ export function reducer(state: State, action: Action): State {
     case 'MOVE_ITEM': {
       // moveItem returns the input array for every no-op, including
       // to === from and to === from + 1.
-      const items = moveItem(state.items, action.from, action.to);
-      if (items === state.items) {
+      const items = moveItem(state.tasks, action.from, action.to);
+      if (items === state.tasks) {
         return state;
       }
       // Reordering changes list position, not items, so nothing is stamped.
-      return { ...state, items };
+      return { ...state, tasks: items };
     }
 
     case 'MARK_ALL': {
-      return { ...state, items: setAllDone(state.items, !isAllDone(state.items)) };
+      return { ...state, tasks: setAllDone(state.tasks, !isAllDone(state.tasks)) };
     }
 
     case 'CLEAR_ALL': {
-      if (!state.items.length) {
+      if (!state.tasks.length) {
         return state;
       }
-      return { ...state, items: [] };
+      return { ...state, tasks: [] };
     }
 
     case 'SET_THEME': {
-      return { ...state, theme: switchTheme(state.theme) };
+      return { ...state, settings: { ...state.settings, theme: switchTheme(state.settings.theme) } };
     }
 
     case 'SET_WIDTH': {

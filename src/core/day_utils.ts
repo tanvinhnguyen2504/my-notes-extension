@@ -1,12 +1,5 @@
-// The day layer: day keys, their formatting, and grouping items by day.
-// Extracted from utils.ts, which keeps storage, normalisation and theme.
-//
-// Imports carry the explicit .ts extension, like everything else here. The day
-// types stay in types.ts rather than a types/day.ts: core/types.ts and a
-// sibling core/types/ directory both resolve for './types', which is a reader
-// trap for 18 lines of gain.
-
-import { DayGroup, DayGroupEntry, DayGroupLabel, DayKey, Item } from './types.ts';
+import { DayKey, Task } from './types.ts';
+import { DayGroup, DayGroupEntry, DayGroupLabel } from './types/day.ts';
 
 const DAY_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const DAY_TOKEN_PATTERN = /(?:^|\s)@(\S+)/i;
@@ -159,7 +152,7 @@ function groupRank(key: string, reference: DayKey): number {
 
 // Keeps each item's index into the original array: row handlers address
 // state.items by index.
-export function groupByDay(items: Item[], reference: DayKey = todayKey()): DayGroup[] {
+export function groupByDay(items: Task[], reference: DayKey = todayKey()): DayGroup[] {
   const groups = new Map<string, DayGroupEntry[]>();
 
   items.forEach((item, index) => {

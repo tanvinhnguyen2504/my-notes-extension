@@ -8,7 +8,7 @@
 // `body.reminder .row`.
 
 import { formatDayKeyShort } from '../core/day_utils.ts';
-import { Item } from '../core/types.ts';
+import { Task } from '../core/types.ts';
 import { PRIORITY_LABELS } from '../core/utils.ts';
 
 // Priority colour is stated as priority AND not-done, rather than relying on
@@ -42,7 +42,7 @@ export const DUE_CLASS =
   'text-dim bg-chip group-data-[done=true]:text-soft';
 
 export interface RowProps {
-  item: Item;
+  item: Task;
   onToggle: () => void;
   boxTitle?: string;
   onTextDoubleClick?: () => void;

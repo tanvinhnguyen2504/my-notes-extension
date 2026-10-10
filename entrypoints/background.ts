@@ -1,5 +1,6 @@
 import { defineBackground } from 'wxt/utils/define-background';
-import { getHighPriorityItems, loadState, nextReminderTime } from '../src/core/utils.ts';
+import { getHighPriorityItems, nextReminderTime } from '../src/core/utils.ts';
+import { loadState } from '../src/storages/state.ts';
 
 const ALARM_NAME = 'reminder.daily';
 const DAY_IN_MINUTES = 1440;
@@ -76,7 +77,7 @@ export default defineBackground({
       if (!state.settings.reminder.enabled) {
         return;
       }
-      if (!getHighPriorityItems(state.items).length) {
+      if (!getHighPriorityItems(state.tasks).length) {
         return;
       }
 

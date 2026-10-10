@@ -2,7 +2,7 @@
 // downloadCsv() touches the document.
 
 import { todayKey } from '../core/day_utils.ts';
-import { DayKey, Item } from '../core/types.ts';
+import { DayKey, Task } from '../core/types.ts';
 import { PRIORITY_LABELS } from '../core/utils.ts';
 
 const COLUMNS: string[] = ['text', 'done', 'priority', 'dueDate', 'updatedAt'];
@@ -14,7 +14,7 @@ function quote(value: unknown): string {
   return `"${String(value).replace(/"/g, '""')}"`;
 }
 
-export function toCsv(items: Item[]): string {
+export function toCsv(items: Task[]): string {
   const rows: (string | boolean)[][] = items.map((item) => [
     quote(item.text),
     item.done,
@@ -32,7 +32,7 @@ export function csvFilename(reference: DayKey = todayKey()): string {
 
 // A Blob rather than chrome.downloads, which would cost a new permission. The
 // leading BOM is what makes Excel read the file as UTF-8.
-export function downloadCsv(items: Item[]): void {
+export function downloadCsv(items: Task[]): void {
   const blob = new Blob(['﻿', toCsv(items)], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
