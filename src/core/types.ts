@@ -13,10 +13,9 @@ export type DayKey = string;
 // Local "HH:MM", validated by isTimeOfDay(). Same reasoning.
 export type TimeOfDay = string;
 
-export interface Item {
-  // Stable across loads, backfilled by normalizeState for items that predate
-  // the field. Exists to be a React key, NOT an addressing scheme -- handlers,
-  // groupByDay and moveItem all still work in array indices.
+export interface Task {
+  // Backfilled by normalizeTasks. A React key, NOT an addressing scheme --
+  // handlers, groupByDay and moveItem all still work in array indices.
   id: string;
   text: string;
   done: boolean;
@@ -31,33 +30,24 @@ export interface ReminderSettings {
   time: TimeOfDay;
 }
 
+// `theme` lives here, not beside `settings`.
 export interface Settings {
+  theme: Theme;
   width: Width;
   reminder: ReminderSettings;
 }
 
-// `theme` sits outside `settings` because it predates it; moving it in would
-// reset the saved theme for every existing user.
+// Reserved for a future feature. Persisted, but nothing reads or writes one;
+// the shape is provisional.
+export interface Memo {
+  id: string;
+  text: string;
+  updatedAt: number | null;
+}
+
+// One storage key per slice, so a write to one cannot clobber another.
 export interface State {
-  items: Item[];
-  theme: Theme;
+  tasks: Task[];
   settings: Settings;
-}
-
-export type DayGroupLabel = 'TODAY' | 'TOMORROW' | 'YESTERDAY' | 'OVERDUE' | 'UPCOMING' | 'UNSCHEDULED';
-
-// Entries keep their index into the original array: row handlers address
-// state.items by index.
-export interface DayGroupEntry {
-  item: Item;
-  index: number;
-}
-
-export interface DayGroup {
-  // The day key, or "" for the unscheduled group.
-  key: string;
-  label: DayGroupLabel;
-  date: string;
-  entries: DayGroupEntry[];
-  done: number;
+  memos: Memo[];
 }

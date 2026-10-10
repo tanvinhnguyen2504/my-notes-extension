@@ -7,7 +7,10 @@ import { DayKey } from '../core/types.ts';
 import { downloadCsv } from '../features/export.ts';
 import { useDragDrop } from '../hooks/useDragDrop.ts';
 import { groupByDay } from '../core/day_utils.ts';
-import { STORAGE_KEY, loadState, normalizeState, progressPercent, saveState } from '../core/utils.ts';
+import { progressPercent } from '../core/utils.ts';
+import { SETTINGS_KEY, normalizeSettings } from '../storages/settings.ts';
+import { emptyState, loadState, persistChanged } from '../storages/state.ts';
+import { TASKS_KEY, normalizeTasks } from '../storages/tasks.ts';
 import { Compose } from './Compose.tsx';
 import { DayGroupSection } from './DayGroupSection.tsx';
 import { EmptyState } from './EmptyState.tsx';
@@ -18,9 +21,7 @@ import { SettingsPanel } from './SettingsPanel.tsx';
 
 export function PopupPage(): React.JSX.Element {
   const [state, rawDispatch] = useReducer(reducer, null, () => {
-    // Placeholder until loadState() resolves, so every field the renderers read
-    // exists from the first frame.
-    return normalizeState(null);
+    return emptyState();
   });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -45,7 +46,8 @@ export function PopupPage(): React.JSX.Element {
     stateRef.current = next;
     rawDispatch(action);
     if (action.type !== 'REPLACE_STATE') {
-      saveState(next);
+      // Only changed slices: a settings toggle no longer rewrites `tasks`.
+      persistChanged(current, next);
     }
     return true;
   };
@@ -57,21 +59,31 @@ export function PopupPage(): React.JSX.Element {
     // Deliberately once, on mount.
   }, []);
 
-  // The reminder window writes the same key. Without this, a tick there is
-  // undone by the popup's next save.
+  // The reminder window writes the tasks key. Without this, a tick there is
+  // undone by the popup's next save. Replacing only the arrived slice keeps the
+  // other references intact, so persistChanged stays accurate.
   useEffect(() => {
     if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.onChanged) {
       return;
     }
     const onChanged = (changes: Record<string, chrome.storage.StorageChange>, area: string): void => {
-      const change = changes[STORAGE_KEY];
-      if (area !== 'local' || !change) {
+      if (area !== 'local') {
         return;
       }
-      const incoming = normalizeState(change.newValue);
+      const current = stateRef.current;
+      const tasksChange = changes[TASKS_KEY];
+      const settingsChange = changes[SETTINGS_KEY];
+      if (!tasksChange && !settingsChange) {
+        return;
+      }
+      const incoming = {
+        ...current,
+        tasks: tasksChange ? normalizeTasks(tasksChange.newValue) : current.tasks,
+        settings: settingsChange ? normalizeSettings(settingsChange.newValue) : current.settings,
+      };
       // Fires for this popup's own writes too, and re-rendering would destroy
       // an open editor for nothing.
-      if (JSON.stringify(incoming) === JSON.stringify(stateRef.current)) {
+      if (JSON.stringify(incoming) === JSON.stringify(current)) {
         return;
       }
       dispatch({ type: 'REPLACE_STATE', state: incoming });
@@ -85,9 +97,9 @@ export function PopupPage(): React.JSX.Element {
   // Both appearance preferences are attributes on <html>, outside the React
   // root -- a contract with styles.css.
   useEffect(() => {
-    document.documentElement.dataset.theme = state.theme;
+    document.documentElement.dataset.theme = state.settings.theme;
     document.documentElement.dataset.width = state.settings.width;
-  }, [state.theme, state.settings.width]);
+  }, [state.settings.theme, state.settings.width]);
 
   const { rowProps, groupProps } = useDragDrop({
     onRowDrop: ({ from, to, dayKey }) => {
@@ -99,7 +111,7 @@ export function PopupPage(): React.JSX.Element {
     },
   });
 
-  const groups = groupByDay(state.items);
+  const groups = groupByDay(state.tasks);
 
   return (
     <>
@@ -112,7 +124,7 @@ export function PopupPage(): React.JSX.Element {
           dispatch({ type: 'CLEAR_ALL' });
         }}
         onExport={() => {
-          downloadCsv(state.items);
+          downloadCsv(state.tasks);
         }}
         settings={
           <SettingsPanel
@@ -135,13 +147,13 @@ export function PopupPage(): React.JSX.Element {
         }
       />
 
-      <Progress percent={progressPercent(state.items)} />
+      <Progress percent={progressPercent(state.tasks)} />
 
       {/* min-h-0 is what actually lets a flex child shrink below its content
           and scroll; flex-1 alone is not enough. The sticky group headers key
           off this element being the scroll container. */}
       <main id="list" className="flex-1 min-h-0 overflow-y-auto overscroll-contain py-[4px]">
-        {state.items.length === 0 ? (
+        {state.tasks.length === 0 ? (
           <EmptyState />
         ) : (
           groups.map((group) => {

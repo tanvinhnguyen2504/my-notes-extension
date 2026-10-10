@@ -4,15 +4,14 @@
 import { useEffect, useReducer } from 'react';
 import { Action, reducer } from '../core/reducer.ts';
 import { State } from '../core/types.ts';
-import { loadState, normalizeState, saveState, sortByPriority } from '../core/utils.ts';
+import { sortByPriority } from '../core/utils.ts';
+import { emptyState, loadState, persistChanged } from '../storages/state.ts';
 import { CHIP, CHIP_HOVER } from './Header.tsx';
 import { NoteRow } from './NoteRow.tsx';
 
 function usePageState(): [State, (action: Action) => void] {
   const [state, rawDispatch] = useReducer(reducer, null, () => {
-    // Placeholder until loadState() resolves, so every field the render reads
-    // exists from the first frame.
-    return normalizeState(null);
+    return emptyState();
   });
 
   // Persisting stays explicit rather than reactive: REPLACE_STATE carries state
@@ -22,7 +21,8 @@ function usePageState(): [State, (action: Action) => void] {
   const dispatch = (action: Action): void => {
     rawDispatch(action);
     if (action.type !== 'REPLACE_STATE') {
-      saveState(reducer(state, action));
+      // Only the changed slice, so a tick here cannot roll back settings.
+      persistChanged(state, reducer(state, action));
     }
   };
 
@@ -40,8 +40,8 @@ export function ReminderPage(): React.JSX.Element {
 
   // On <html>, outside the React root -- a contract with styles.css.
   useEffect(() => {
-    document.documentElement.dataset.theme = state.theme;
-  }, [state.theme]);
+    document.documentElement.dataset.theme = state.settings.theme;
+  }, [state.settings.theme]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
@@ -56,16 +56,16 @@ export function ReminderPage(): React.JSX.Element {
   }, []);
 
   const outstanding = sortByPriority(
-    state.items.filter((item) => {
+    state.tasks.filter((item) => {
       return !item.done;
     }),
   );
 
   // The rendered list is filtered and re-sorted, so a row's position here says
-  // nothing about its index in state.items -- which is what the reducer
+  // nothing about its index in state.tasks -- which is what the reducer
   // addresses. The id bridges the two.
   const tick = (id: string): void => {
-    const index = state.items.findIndex((item) => {
+    const index = state.tasks.findIndex((item) => {
       return item.id === id;
     });
     if (index === -1) {

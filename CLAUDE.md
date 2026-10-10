@@ -41,7 +41,12 @@ entry points, and nothing imports upward.
 | `src/popup.tsx` | React root for the popup. Mounts and nothing else |
 | `src/reminder.tsx` | React root for the reminder window |
 | `src/core/types.ts` | `Item`, `State`, `Settings`, `Priority`, `DayKey` and friends. Types only |
-| `src/core/utils.ts` | Storage, normalisation, parsing, priority, theme/width. **No DOM access** |
+| `src/core/utils.ts` | Parsing, priority, theme/width, task helpers. Pure. **No DOM access, no storage** |
+| `src/storages/local.ts` | The only module that talks to a backend. chrome/localStorage fallback |
+| `src/storages/tasks.ts` | `tasks.v1` slice: `normalizeTasks`, load, save |
+| `src/storages/settings.ts` | `settings.v1` slice, `theme` included |
+| `src/storages/memo.ts` | `memo.v1` slice. Reserved -- nothing reads a memo yet |
+| `src/storages/state.ts` | Assembles the slices into `State`; `persistChanged` writes only what changed |
 | `src/core/day_utils.ts` | Day keys, their formatting, and grouping items by day. **No DOM access** |
 | `src/core/reducer.ts` | The single place state changes. Pure, DOM-free, composed from `utils.ts` |
 | `src/components/PopupPage.tsx` | Owns the reducer, the storage subscription, and non-persisted view state |
@@ -125,10 +130,15 @@ untouched under plain `node` — see Testing.
   object widens the type automatically. Never a TS `enum`: non-erasable syntax
   would stop the sources running under plain `node`, which `erasableSyntaxOnly`
   turns into a compile error.
-- **`normalizeState()` is the type boundary.** It takes `unknown` and returns
-  `State`. Nothing downstream casts, and nothing upstream is trusted. If a
-  shape cannot be proven, the fix goes in `normalizeState`, not in a cast at
-  the call site.
+- **The slice normalizers are the type boundary.** `normalizeTasks`,
+  `normalizeSettings` and `normalizeMemos` each take `unknown` and return a
+  complete value for every input, including `undefined`. Nothing downstream
+  casts and nothing upstream is trusted. If a shape cannot be proven, the fix
+  goes in a normalizer, never in a cast at the call site.
+- **`core/` must not import `storages/`.** The dependency runs
+  `core ← storages ← components`, and `utils.ts` holds no storage at all any
+  more. A storage import inside `core` would make the cycle real and drag
+  `chrome` into the pure layer.
 - **Persisting is explicit, never reactive.** `dispatch` saves for
   locally-originated actions and skips `REPLACE_STATE`. An effect that saved on
   every state change would write back the state that just arrived *from*
@@ -137,14 +147,34 @@ untouched under plain `node` — see Testing.
 
 ## Data model
 
-State is `{ items: [], theme, settings }`, saved under `chrome.storage.local` key
-`checklist.v1` (`STORAGE_KEY`), with a `localStorage` fallback so the popup also
-runs from a plain page during testing.
+State is `{ tasks, settings, memos }` -- three slices, each under its own
+`chrome.storage.local` key, with a `localStorage` fallback so the popup also
+runs from a plain page during testing:
 
-`settings` is `{ width, reminder: { enabled, time } }`. `theme` stays a top-level
-field deliberately — it predates `settings`, and moving it in would reset the
-saved theme for every existing user and leave `normalizeState()` carrying a
-read-from-both-places branch forever. `normalizeSettings()` always returns a
+| Key | Holds |
+| --- | --- |
+| `tasks.v1` | `Task[]`, a bare array |
+| `settings.v1` | `Settings`, including `theme` |
+| `memo.v1` | `Memo[]`, always `[]` so far |
+
+There is **no migration from the pre-split layout**, deliberately. The old
+`checklist.v1` key held `{ items, theme, settings }`; nothing reads it any more,
+so an install that predates the split starts empty. The key is never written or
+deleted either, so the old payload is still sitting there inert should it ever
+be wanted -- but no code path knows about it.
+
+**Three keys exist to stop cross-slice clobbering.** With one key, the popup
+saving a settings toggle wrote back its own copy of `items` too, so it could
+undo a tick the reminder window had just made; the `onChanged` listener existed
+to paper over it. Now `persistChanged(previous, next)` writes only the slices
+whose **reference** changed, which is exact rather than merely fast because the
+reducer guarantees a changed slice is a new reference and an unchanged one is
+the same reference. Never write a slice the reducer did not change.
+
+`settings` is `{ theme, width, reminder: { enabled, time } }`. `theme` used to
+sit outside `settings` so that moving it would not reset the saved theme for
+every existing user; with no migration kept, that constraint is simply gone and
+theme lives where it belongs. `normalizeSettings()` always returns a
 *complete* object; never spread a partial saved value into live state, because a
 missing nested field reads as `undefined` exactly where it matters and fails
 silently.
