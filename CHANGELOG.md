@@ -1,5 +1,9 @@
 # 2026-10-09
 
+- [#PR6](https://github.com/tanvinhnguyen2504/my-notes-extension/pull/6)
+  - feat: update entity from `Item` to `Task`
+  - refactor: split into tasks/settings/memos
+
 - [#PR5](https://github.com/tanvinhnguyen2504/my-notes-extension/pull/5)
   - refactor(ui): replace the imperative DOM layer with React 19. `popup.ts` (411 lines), `reminder.ts`, `core/dom.ts`, `ui/menu.ts`, `ui/drag-drop.ts` and the `priority`/`due-date`/`settings` feature modules are all gone
   - feat(core): `Item.id`, backfilled by `normalizeState` only when absent. It exists to be a stable React key — index-as-key on a list that reorders makes React mutate the wrong node
