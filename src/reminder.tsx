@@ -1,3 +1,4 @@
+import './styles.css';
 import { createRoot } from 'react-dom/client';
 import { ReminderPage } from './components/ReminderPage.tsx';
 
