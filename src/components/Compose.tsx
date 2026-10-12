@@ -19,7 +19,7 @@ export function Compose({ onAdd, autoFocus }: ComposeProps): React.JSX.Element {
   };
 
   return (
-    <footer className="compose flex items-center gap-[11px] py-[11px] px-[14px] bg-surface border-t border-line">
+    <footer className="sticky bottom-0 compose flex items-center gap-[11px] py-[11px] px-[14px] bg-surface border-t border-line focus-within:border-teal">
       <input
         id="draft"
         className="flex-1 min-w-0 border-0 outline-0 bg-transparent [font:inherit] text-ink placeholder:text-dim"
