@@ -1,6 +1,6 @@
 import './styles.css';
 import { createRoot } from 'react-dom/client';
-import { PopupPage } from './components/PopupPage.tsx';
+import { PopupPage } from './components/PopupPage';
 
 const host = document.getElementById('root');
 if (!host) {

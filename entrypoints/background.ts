@@ -1,6 +1,6 @@
 import { defineBackground } from 'wxt/utils/define-background';
-import { getHighPriorityItems, nextReminderTime } from '../src/core/utils.ts';
-import { loadState } from '../src/storages/state.ts';
+import { getHighPriorityItems, nextReminderTime } from '@/src/core/utils';
+import { loadState } from '@/src/storages/state';
 
 const ALARM_NAME = 'reminder.daily';
 const DAY_IN_MINUTES = 1440;

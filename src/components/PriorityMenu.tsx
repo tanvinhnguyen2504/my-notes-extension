@@ -8,8 +8,8 @@
 // and data-state.
 
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { Priority } from '../core/types.ts';
-import { PRIORITY_LABELS, PRIORITY_ORDER } from '../core/utils.ts';
+import { Priority } from '@/src/core/types';
+import { PRIORITY_LABELS, PRIORITY_ORDER } from '@/src/core/utils';
 
 const ITEM =
   'group flex items-center gap-[8px] w-full h-[30px] px-[8px] rounded-[7px] ' +

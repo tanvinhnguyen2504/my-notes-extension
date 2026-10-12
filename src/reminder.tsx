@@ -1,6 +1,6 @@
 import './styles.css';
 import { createRoot } from 'react-dom/client';
-import { ReminderPage } from './components/ReminderPage.tsx';
+import { ReminderPage } from './components/ReminderPage';
 
 const host = document.getElementById('root');
 if (!host) {

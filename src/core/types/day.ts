@@ -1,4 +1,4 @@
-import { Task } from '../types.ts';
+import { Task } from '@/src/core/types';
 
 export type DayGroupLabel = 'TODAY' | 'TOMORROW' | 'YESTERDAY' | 'OVERDUE' | 'UPCOMING' | 'UNSCHEDULED';
 

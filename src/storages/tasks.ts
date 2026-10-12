@@ -1,7 +1,7 @@
-import { Task } from '../core/types.ts';
-import { isDayKey } from '../core/day_utils.ts';
-import { PRIORITY, isPriority, isRecord, newId } from '../core/utils.ts';
-import { readDataByKeyFromStorage, writeKey } from './local.ts';
+import { Task } from '@/src/core/types';
+import { isDayKey } from '@/src/core/day_utils';
+import { PRIORITY, isPriority, isRecord, newId } from '@/src/core/utils';
+import { readDataByKeyFromStorage, writeKey } from './local';
 
 export const TASKS_KEY = 'tasks.v1';
 

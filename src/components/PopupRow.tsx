@@ -1,9 +1,9 @@
-import { DayKey, Task, Priority } from '../core/types.ts';
-import { PRIORITY_LABELS } from '../core/utils.ts';
-import { DueChip } from './DueChip.tsx';
-import { EditableText } from './EditableText.tsx';
-import { FLAG_CLASS, NoteRow, TAG_CLASS } from './NoteRow.tsx';
-import { PriorityMenu } from './PriorityMenu.tsx';
+import { DayKey, Task, Priority } from '@/src/core/types';
+import { PRIORITY_LABELS } from '@/src/core/utils';
+import { DueChip } from './DueChip';
+import { EditableText } from './EditableText';
+import { FLAG_CLASS, NoteRow, TAG_CLASS } from './NoteRow';
+import { PriorityMenu } from './PriorityMenu';
 
 // Both triggers dim slightly while their menu is open. aria-expanded is what
 // Radix puts on the trigger it was given through asChild.

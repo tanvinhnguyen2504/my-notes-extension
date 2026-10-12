@@ -2,9 +2,9 @@
 // <input type="date"> sits off-screen purely to host the browser's calendar.
 
 import { useRef } from 'react';
-import { formatDayKeyShort, isDayKey } from '../core/day_utils.ts';
-import { DayKey, Task } from '../core/types.ts';
-import { DUE_CLASS } from './NoteRow.tsx';
+import { formatDayKeyShort, isDayKey } from '@/src/core/day_utils';
+import { DayKey, Task } from '@/src/core/types';
+import { DUE_CLASS } from './NoteRow';
 
 // data-unset is paired with not-done for the same reason the priority colours
 // are: the CSS this replaced relied on the done rule coming last.

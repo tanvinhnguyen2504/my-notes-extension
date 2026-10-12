@@ -1,9 +1,9 @@
 // Assembles the slices into one State, and writes back only what changed.
 
-import { State } from '../core/types.ts';
-import { loadMemos, saveMemos } from './memo.ts';
-import { loadSettings, normalizeSettings, saveSettings } from './settings.ts';
-import { loadTasks, saveTasks } from './tasks.ts';
+import { State, Task } from '@/src/core/types';
+import { loadMemos, saveMemos } from './memo';
+import { loadSettings, normalizeSettings, saveSettings } from './settings';
+import { loadTasks, saveTasks } from './tasks';
 
 // First-frame placeholder, before loadState() resolves.
 export function emptyState(): State {

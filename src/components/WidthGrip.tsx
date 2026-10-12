@@ -1,4 +1,4 @@
-import { GripHandlers, GripSide } from '../hooks/useWidthDrag.ts';
+import { GripHandlers, GripSide } from '@/src/hooks/useWidthDrag';
 
 export interface WidthGripProps {
   side: GripSide;

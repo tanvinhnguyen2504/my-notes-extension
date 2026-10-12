@@ -1,5 +1,5 @@
-import { todayKey } from '../core/day_utils.ts';
-import { DayGroup } from '../core/types/day.ts';
+import { todayKey } from '@/src/core/day_utils';
+import { DayGroup } from '@/src/core/types/day';
 
 export interface DayGroupSectionProps {
   group: DayGroup;
