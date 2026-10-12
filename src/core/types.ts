@@ -1,27 +1,22 @@
-// Unions are derived from utils.ts's const objects rather than restated, so
-// PRIORITY.* stays the only way to name a level.
-import { PRIORITY, THEME, WIDTH } from './utils.ts';
+import { IMemo } from './types/memos';
+import { PRIORITY, THEME, WIDTH } from './utils';
 
 export type Priority = (typeof PRIORITY)[keyof typeof PRIORITY];
 export type Theme = (typeof THEME)[keyof typeof THEME];
 export type Width = (typeof WIDTH)[keyof typeof WIDTH];
 
-// "YYYY-MM-DD". A plain alias, not branded: a brand would force a cast at every
-// <input type="date"> read, and isDayKey() already enforces the shape.
+// Not branded: a brand would force a cast at every <input type="date"> read.
 export type DayKey = string;
 
-// Local "HH:MM", validated by isTimeOfDay(). Same reasoning.
 export type TimeOfDay = string;
 
 export interface Task {
-  // Backfilled by normalizeTasks. A React key, NOT an addressing scheme --
-  // handlers, groupByDay and moveItem all still work in array indices.
+  // A React key, NOT an addressing scheme: tasks are addressed by index.
   id: string;
   text: string;
   done: boolean;
   priority: Priority;
   updatedAt: number | null;
-  // null only for legacy items or a drop on UNSCHEDULED.
   dueDate: DayKey | null;
 }
 
@@ -30,28 +25,19 @@ export interface ReminderSettings {
   time: TimeOfDay;
 }
 
-// `theme` lives here, not beside `settings`.
+// A view preference, so it sits beside `theme` rather than taking a fourth key.
+export type PopupMode = 'tasks' | 'memos';
+
 export interface Settings {
   theme: Theme;
   width: Width;
-  // Pixels, and only meaningful while `width` is WIDE. A plain number rather
-  // than a branded type: the guards in utils.ts do the enforcing, and every
-  // read already passes through clampWideWidth.
   wideWidth: number;
+  mode: PopupMode;
   reminder: ReminderSettings;
 }
 
-// Reserved for a future feature. Persisted, but nothing reads or writes one;
-// the shape is provisional.
-export interface Memo {
-  id: string;
-  text: string;
-  updatedAt: number | null;
-}
-
-// One storage key per slice, so a write to one cannot clobber another.
 export interface State {
   tasks: Task[];
   settings: Settings;
-  memos: Memo[];
+  memos: IMemo[];
 }

@@ -20,7 +20,7 @@ classes with utilities on the components, with zero visual change.
 - [x] Point both HTML entrypoints at `src/styles.css`.
 - [x] Convert component by component, in dependency order — leaf components
       first (`NoteRow`, `DueChip`, `SettingSwitch`), containers last (`PopupPage`,
-      `Header`). Delete each class from `popup.css` as its last user goes, so the
+      `TaskHeader`). Delete each class from `popup.css` as its last user goes, so the
       file shrinks monotonically and anything left at the end is genuinely
       orphaned.
 - [x] Port the data-attribute rules to variants:
@@ -77,7 +77,7 @@ themes and both widths. Load the old build in one window and the new in another.
   due date; overdue; unscheduled.
 - Every group label: `TODAY`, `TOMORROW`, `YESTERDAY`, `OVERDUE`, `UPCOMING`,
   `UNSCHEDULED` — each has its own styling in the current CSS.
-- Header: the mark-all button in both directions, the clear button armed and
+- TaskHeader: the mark-all button in both directions, the clear button armed and
   unarmed, the export and settings chips, their disabled states on an empty
   list.
 - Progress bar at 0%, part-way, and 100%.

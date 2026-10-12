@@ -1,18 +1,11 @@
-// Rendered as a sibling of <header>, never inside it: the header is a
-// `flex items-center` row, so a panel nested there becomes one of its flex
-// items and inherits the row layout, gap and vertical centring. It sits in
-// flow between the progress bar and the list, so opening it shrinks the list
-// rather than covering it -- the list is flex-1 and gives up the space.
-
 import { useEffect, useState } from 'react';
-import { State } from '../core/types.ts';
-import { THEME, WIDTH } from '../core/utils.ts';
+import { State } from '@/src/core/types';
+import { THEME, WIDTH } from '@/src/core/utils';
 import { SettingSwitch } from './SettingSwitch.tsx';
 
 function ReminderTime({ time, onPick }: { time: string; onPick: (time: string) => void }): React.JSX.Element {
   const [draft, setDraft] = useState(time);
 
-  // Re-sync when the saved time changes from somewhere other than this field.
   useEffect(() => {
     setDraft(time);
   }, [time]);
@@ -54,8 +47,6 @@ export function SettingDetailsPanel({
 }: SettingDetailsPanelProps): React.JSX.Element {
   const { enabled, time } = state.settings.reminder;
 
-  // `flex-none` because body is a flex column: without it the panel would be
-  // sized by the free space left over rather than by its content.
   return (
     <section id="settings-panel" className="flex-none pt-[4px] px-[16px] pb-[10px] bg-surface border-b border-line">
       <SettingSwitch id="set-theme" label="Dark mode" checked={state.settings.theme === THEME.DARK} onToggle={onToggleTheme} />

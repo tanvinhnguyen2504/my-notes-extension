@@ -1,25 +1,6 @@
-/* Tailwind tokens, the globals, and the rules that cannot become utilities.
- *
- * Preflight is deliberately NOT imported. `@import "tailwindcss"` would pull in
- * a global reset, which would change the look of every component on the way in
- * -- and this migration's premise is zero visual change. Importing theme and
- * utilities only gives the token-generated utility classes with no reset, which
- * is why the `*`, `body` and `button` rules below have to stand in for one.
- *
- * The design tokens live in @theme, the single source of colour truth: it both
- * declares the custom properties and generates matching utilities (bg-surface,
- * text-ink, border-line, shadow-menu, ...). No colour literal belongs in a
- * .tsx file.
- *
- * Dark mode is an explicit attribute the app writes from saved state, not a
- * media query, so it redefines the same tokens rather than using Tailwind's
- * `dark:` variant. Every rule and utility follows without a single prefix.
- *
- * The component styling itself lives on the components as utilities. Only three
- * kinds of rule remain here, each for a reason it cannot be a utility: the
- * globals, the <html>/<body> descendant overrides, and the four classes
- * useDragDrop applies with classList.
- */
+/* Tokens, the layered reset, and the rules that cannot be utilities.
+ * Preflight is NOT imported, so the @layer base rules stand in for a reset.
+ * Dark mode redefines the same tokens, so no rule needs a `dark:` prefix. */
 
 /* DO NOT DELETE. Declares the layer ORDER. Without it the order is
    first-appearance -- theme, utilities, base -- putting the reset LAST so it
@@ -66,9 +47,32 @@
   --color-tag-low-bg: color-mix(in oklch, var(--color-pri-low) 90%, black);
   --color-tag-low-fg: var(--color-surface);
 
-  /* Shadows live here too, so no colour literal is needed in a .tsx file. */
   --shadow-knob: 0 1px 2px rgba(0, 0, 0, 0.2);
+  /* Memo type dots, memo.md section 0. One colour per TYPE, not per sub-type. */
+  --color-type-git: oklch(0.6 0.13 40);
+  --color-type-database: oklch(0.62 0.12 250);
+  --color-type-config: oklch(0.62 0.12 140);
+  --color-type-shell: rgba(23, 22, 26, 0.45);
+  --color-type-note: oklch(0.7 0.1 85);
+
+  /* Dark in BOTH themes: a snippet reads as a terminal. */
+  --color-code-bg: #17161a;
+  --color-code-ink: #eae7e1;
+
+  /* Advisory, never blocking. */
+  --color-warn-bg: oklch(0.95 0.05 85);
+  --color-warn-ink: oklch(0.45 0.1 70);
+
+  /* Reuses the clay hue CLEAR already speaks in, not a second red. */
+  --color-danger-ink: var(--color-clay-ink);
+
+  /* A system stack: an MV3 page cannot fetch Google Fonts under the CSP. */
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
   --shadow-menu: 0 6px 24px rgba(0, 0, 0, 0.14), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-segment: 0 1px 2px rgba(0, 0, 0, 0.08);
+
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 html[data-theme='dark'] {
@@ -103,6 +107,13 @@ html[data-theme='dark'] {
   --color-tag-medium-fg: var(--color-bg);
   --color-tag-low-bg: var(--color-pri-low);
   --color-tag-low-fg: var(--color-bg);
+
+  /* Only the grey dot has to invert. */
+  --color-type-shell: rgba(242, 240, 236, 0.45);
+  --color-code-bg: #0f1013;
+  --color-warn-bg: oklch(0.3 0.06 70);
+  --color-warn-ink: oklch(0.88 0.08 80);
+  --color-danger-ink: var(--color-clay-ink);
 }
 
 /* Preflight is not imported, so these stand in for a reset. They must be in
@@ -131,6 +142,11 @@ html[data-theme='dark'] {
     -webkit-font-smoothing: antialiased;
   }
 
+  /* #root is written by the HTML entrypoints, not by React, so this can never
+     be a utility -- and the layout chain hangs off it. `main` carries
+     `flex-1 min-h-0`, which means nothing unless its PARENT is a flex
+     container. Without this the list grows to its content height and body's
+     overflow clips it instead of the list scrolling. */
   #root {
     display: flex;
     flex-direction: column;
@@ -185,6 +201,21 @@ body.reminder .compose {
 
 .compose input:focus-visible {
   outline: none;
+}
+
+/* Dark only: at #0f1013 the code block would otherwise merge into the surface
+   behind it. Unlayered because it is an override, not a reset. */
+html[data-theme='dark'] #memo-body {
+  border: 1px solid var(--color-line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }
 
 html[data-width='wide'] .text,

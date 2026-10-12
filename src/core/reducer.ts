@@ -1,30 +1,11 @@
-// The single place state changes. Pure, DOM-free, and composed entirely from
-// the transforms in utils.ts -- it adds no logic of its own, it just gives the
-// existing transforms one entry point.
-//
-// Every case returns a NEW state, items array and item object where it changes
-// one. The imperative renderer cannot tell the difference, but React can: a
-// mutated-in-place item is a row that silently refuses to update.
-//
-// No-op actions return the SAME state reference, so a caller can skip a save
-// and a render by identity.
-//
-// View state is deliberately absent: whether the clear button is armed, which
-// row is being edited, and whether the settings panel is open are not
-// persisted and do not belong here.
+// Every case returns a NEW state, array and item where it changes one -- a
+// mutated-in-place item is a row that silently refuses to update. No-op actions
+// return the SAME reference, so callers skip a save and a render by identity.
 
-import { Task, Priority, State, TimeOfDay } from './types.ts';
-import {
-  clampWideWidth,
-  isAllDone,
-  isTimeOfDay,
-  moveItem,
-  nextWidth,
-  parseDraft,
-  setAllDone,
-  sortByPriority,
-  switchTheme,
-} from './utils.ts';
+import { touchMemo } from './memo_utils';
+import { Task, Priority, PopupMode, State, TimeOfDay } from './types';
+import { IMemo } from './types/memos';
+import { clampWideWidth, isAllDone, isTimeOfDay, moveItem, nextWidth, parseDraft, setAllDone, sortByPriority, switchTheme } from './utils';
 
 export type Action =
   | { type: 'ADD_ITEM'; text: string }
@@ -41,12 +22,14 @@ export type Action =
   | { type: 'SET_WIDE_WIDTH'; width: number }
   | { type: 'SET_REMINDER_ENABLED' }
   | { type: 'SET_REMINDER_TIME'; time: TimeOfDay }
+  | { type: 'SET_MODE'; mode: PopupMode }
+  | { type: 'ADD_MEMO'; memo: IMemo }
+  | { type: 'UPDATE_MEMO'; id: string; changes: Partial<Omit<IMemo, 'id'>> }
+  | { type: 'DELETE_MEMO'; id: string }
+  | { type: 'TOGGLE_MEMO_PIN'; id: string }
+  | { type: 'COUNT_MEMO_COPY'; id: string }
   | { type: 'REPLACE_STATE'; state: State };
 
-// Replaces one item with the result of `change`, stamping it. Returns the same
-// array when the index is out of range, which makes every index-addressed
-// action a no-op rather than a throw -- the indices come from rendered rows, so
-// this should be unreachable.
 function replaceItem(items: Task[], index: number, change: (item: Task) => Task): Task[] {
   const item = items[index];
   if (!item) {
@@ -57,11 +40,23 @@ function replaceItem(items: Task[], index: number, change: (item: Task) => Task)
   return next;
 }
 
+function replaceMemo(memos: IMemo[], id: string, change: (memo: IMemo) => IMemo): IMemo[] {
+  const index = memos.findIndex((memo) => {
+    return memo.id === id;
+  });
+  const memo = memos[index];
+  if (!memo) {
+    return memos;
+  }
+  const next = memos.slice();
+  next[index] = touchMemo(change(memo));
+  return next;
+}
+
 export function reducer(state: State, action: Action): State {
   switch (action.type) {
     case 'ADD_ITEM': {
       const item = parseDraft(action.text);
-      // parseDraft returns null for empty or whitespace-only input.
       if (!item) {
         return state;
       }
@@ -93,8 +88,6 @@ export function reducer(state: State, action: Action): State {
     case 'RENAME_ITEM': {
       const item = state.tasks[action.index];
       const text = action.text.trim();
-      // An emptied field is a cancel, not a delete, and renaming to the same
-      // text should not move the modified stamp.
       if (!item || !text || text === item.text) {
         return state;
       }
@@ -111,8 +104,6 @@ export function reducer(state: State, action: Action): State {
       if (!item || item.priority === action.priority) {
         return state;
       }
-      // Mutate, stamp, sort -- in that order. The resort invalidates the index
-      // every row handler closed over, which the following render re-derives.
       const stamped = replaceItem(state.tasks, action.index, (current) => {
         return { ...current, priority: action.priority };
       });
@@ -121,8 +112,7 @@ export function reducer(state: State, action: Action): State {
 
     case 'SET_DAY': {
       const item = state.tasks[action.index];
-      // Comparing through `|| null` because an unscheduled item stores null and
-      // a cleared date input reports "".
+      // An unscheduled item stores null; a cleared date input reports "".
       if (!item || (item.dueDate || null) === (action.dayKey || null)) {
         return state;
       }
@@ -135,13 +125,10 @@ export function reducer(state: State, action: Action): State {
     }
 
     case 'MOVE_ITEM': {
-      // moveItem returns the input array for every no-op, including
-      // to === from and to === from + 1.
       const items = moveItem(state.tasks, action.from, action.to);
       if (items === state.tasks) {
         return state;
       }
-      // Reordering changes list position, not items, so nothing is stamped.
       return { ...state, tasks: items };
     }
 
@@ -183,8 +170,6 @@ export function reducer(state: State, action: Action): State {
     }
 
     case 'SET_REMINDER_TIME': {
-      // The control reports "" when cleared. Keep the last good time rather
-      // than writing something the service worker cannot schedule.
       if (!isTimeOfDay(action.time) || action.time === state.settings.reminder.time) {
         return state;
       }
@@ -197,10 +182,59 @@ export function reducer(state: State, action: Action): State {
       };
     }
 
-    // The two wholesale replacements: loadState()'s .then and the
-    // chrome.storage.onChanged listener. A caller must NOT persist this -- the
-    // state it carries just came from storage, and writing it back loops
-    // against background.ts re-syncing the alarm on every write.
+    case 'SET_MODE': {
+      if (action.mode === state.settings.mode) {
+        return state;
+      }
+      return { ...state, settings: { ...state.settings, mode: action.mode } };
+    }
+
+    case 'ADD_MEMO': {
+      if (!action.memo.content.trim()) {
+        return state;
+      }
+      return { ...state, memos: [...state.memos, touchMemo(action.memo)] };
+    }
+
+    case 'UPDATE_MEMO': {
+      const memos = replaceMemo(state.memos, action.id, (memo) => {
+        return { ...memo, ...action.changes };
+      });
+      if (memos === state.memos) {
+        return state;
+      }
+      return { ...state, memos };
+    }
+
+    case 'DELETE_MEMO': {
+      const memos = state.memos.filter((memo) => {
+        return memo.id !== action.id;
+      });
+      if (memos.length === state.memos.length) {
+        return state;
+      }
+      return { ...state, memos };
+    }
+
+    case 'TOGGLE_MEMO_PIN': {
+      const memos = replaceMemo(state.memos, action.id, (memo) => {
+        return { ...memo, isPinned: !memo.isPinned };
+      });
+      if (memos === state.memos) {
+        return state;
+      }
+      return { ...state, memos };
+    }
+
+    case 'COUNT_MEMO_COPY': {
+      const memos = replaceMemo(state.memos, action.id, (memo) => {
+        return { ...memo, uses: memo.uses + 1 };
+      });
+      if (memos === state.memos) {
+        return state;
+      }
+      return { ...state, memos };
+    }
     case 'REPLACE_STATE': {
       return action.state;
     }
