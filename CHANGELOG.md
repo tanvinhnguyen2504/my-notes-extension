@@ -1,5 +1,7 @@
 # 2026-10-12
 
+- chore: adopt the @/ alias across src/
+- refactor(popup): rename "Header" to "TaskHeader" and add "TasksPage" component
 - fix(popup): bug cannot resize to adjust width
 - feat(styles): add overflow for list of tasks
 - feat(popup): replace settings panel out of the header by settings detail component
