@@ -21,8 +21,14 @@
  * useDragDrop applies with classList.
  */
 
-@import "tailwindcss/theme.css" layer(theme);
-@import "tailwindcss/utilities.css" layer(utilities);
+/* DO NOT DELETE. Declares the layer ORDER. Without it the order is
+   first-appearance -- theme, utilities, base -- putting the reset LAST so it
+   beats every utility. Builds fine; flattens every button at runtime. A @layer
+   statement is legal before @import, a @layer BLOCK is not, so it must be here. */
+@layer theme, base, components, utilities;
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
 
 @theme {
   --color-bg: #f7f5f1;
@@ -42,11 +48,11 @@
   --color-clay: oklch(0.58 0.13 40);
   --color-clay-ink: oklch(0.48 0.11 40);
   --color-low: rgba(23, 22, 26, 0.22);
-  --color-pri-high: oklch(0.58 0.20 25);
-  --color-pri-high-ink: oklch(0.50 0.18 25);
-  --color-pri-medium: oklch(0.80 0.16 85);
+  --color-pri-high: oklch(0.58 0.2 25);
+  --color-pri-high-ink: oklch(0.5 0.18 25);
+  --color-pri-medium: oklch(0.8 0.16 85);
   --color-pri-medium-ink: oklch(0.52 0.12 85);
-  --color-pri-low: oklch(0.60 0.17 255);
+  --color-pri-low: oklch(0.6 0.17 255);
   --color-pri-low-ink: oklch(0.52 0.15 255);
   /* Solid priority pills. The background still derives from the same --pri-*
      token that paints the row's edge strip, so the two cannot drift. Only the
@@ -65,8 +71,7 @@
   --shadow-menu: 0 6px 24px rgba(0, 0, 0, 0.14), 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
-
-html[data-theme="dark"] {
+html[data-theme='dark'] {
   --color-bg: #16171b;
   --color-surface: #1b1c21;
   --color-ink: #f2f0ec;
@@ -84,11 +89,11 @@ html[data-theme="dark"] {
   --color-clay: oklch(0.72 0.13 45);
   --color-clay-ink: oklch(0.82 0.11 45);
   --color-low: rgba(242, 240, 236, 0.18);
-  --color-pri-high: oklch(0.70 0.18 25);
+  --color-pri-high: oklch(0.7 0.18 25);
   --color-pri-high-ink: oklch(0.78 0.15 25);
   --color-pri-medium: oklch(0.84 0.15 85);
   --color-pri-medium-ink: oklch(0.86 0.13 85);
-  --color-pri-low: oklch(0.70 0.15 255);
+  --color-pri-low: oklch(0.7 0.15 255);
   --color-pri-low-ink: oklch(0.78 0.13 255);
   /* Dark theme lifts every --pri-* token well above mid-lightness, so the pill
      text flips to the page background: 6.19 / 10.87 / 6.68. No darkening needed. */
@@ -100,70 +105,100 @@ html[data-theme="dark"] {
   --color-tag-low-fg: var(--color-bg);
 }
 
+/* Preflight is not imported, so these stand in for a reset. They must be in
+   `base`, NOT unlayered: an unlayered rule beats every layer at any
+   specificity, and while `button` was unlayered its background/border/padding/
+   color/font beat the utilities on all 11 buttons -- no strips, pills,
+   checkboxes or chips, every label one size. */
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
 
-* { box-sizing: border-box; }
+  body {
+    width: 380px;
+    min-height: 520px;
+    /* max-height: 520px; */
+    margin: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font:
+      400 13.5px/1.35 Arial,
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
 
-body {
-  width: 380px;
-  /* A fixed height, not a minimum: the header, progress bar and compose row are
-     pinned and the list is the only thing that scrolls. With min-height the
-     popup grew with the list until the browser clipped it and the compose row
-     went out of reach. */
-  height: 520px;
-  margin: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  background: var(--color-bg);
-  color: var(--color-ink);
-  font: 400 13.5px/1.35 Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
+  #root {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  button {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+  }
 }
 
-button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
-
-:focus-visible { outline: 2px solid var(--color-teal); outline-offset: 1px; }
+:focus-visible {
+  outline: 2px solid var(--color-teal);
+  outline-offset: 1px;
+}
 
 /* Chrome sizes a popup from its content and caps it at 800x600, with no resize
    handle for the user -- so "expand the width" means the page asking for more
    room. 720 leaves headroom under the cap; a popup that asks for more than 800
    gets clipped, not scrolled. */
-html[data-width="wide"] body { width: 720px; }
+html[data-width='wide'] body {
+  width: 720px;
+}
 
 /* The reminder window is sized by chrome.windows.create, so it fills whatever
    it is given instead of the popup's fixed 380x520. */
-body.reminder { width: auto; height: 100vh; }
-body.reminder .row { cursor: default; }
-body.reminder .compose { justify-content: flex-end; }
+body.reminder {
+  width: auto;
+  height: 100vh;
+}
+body.reminder .row {
+  cursor: default;
+}
+body.reminder .compose {
+  justify-content: flex-end;
+}
 
-/* The four descendant overrides below are why `row`, `text` and `compose`
-   survive as bare class hooks on components that are otherwise styled with
-   utilities: a utility cannot be reached into from an ancestor selector, and
-   both of these conditions live on <html> or <body>, outside the React root.
-   Being unlayered, they beat anything in the utilities layer regardless of
-   specificity -- which is exactly what an override needs to do.
-
-   Width alone does not fix the text: it truncates with an ellipsis at any
-   width, so wide mode has to relax that too. overflow-wrap:anywhere because a
-   pasted URL offers no break opportunities and would otherwise force the row to
-   overflow sideways. The row is min-height, so a wrapped row simply grows. The
-   reminder window's rows always wrap, for the same reason: the window is wide
-   enough, and a reminder you cannot fully read is not a reminder. */
-html[data-width="wide"] .text,
+html[data-width='wide'] .text,
 body.reminder .text {
   white-space: normal;
   overflow: visible;
   text-overflow: clip;
   overflow-wrap: anywhere;
 }
-body.reminder .text { cursor: default; }
+body.reminder .text {
+  cursor: default;
+}
 
-/* Applied by useDragDrop with classList, not by rendering, so these cannot
-   become utilities -- a utility class string is not something classList.add()
-   can compose. This is where the Tailwind conversion stops, and it is a
-   correctness constraint rather than a preference. */
-.row[draggable="true"] { cursor: grab; }
-.row.dragging { opacity: 0.4; cursor: grabbing; }
-.row.drop-before { box-shadow: inset 0 2px 0 var(--color-teal); }
-.row.drop-after { box-shadow: inset 0 -2px 0 var(--color-teal); }
-.group-head.drop-into { background: var(--color-hover); box-shadow: inset 0 0 0 1px var(--color-teal); }
+.row[draggable='true'] {
+  cursor: grab;
+}
+.row.dragging {
+  opacity: 0.4;
+  cursor: grabbing;
+}
+.row.drop-before {
+  box-shadow: inset 0 2px 0 var(--color-teal);
+}
+.row.drop-after {
+  box-shadow: inset 0 -2px 0 var(--color-teal);
+}
+.group-head.drop-into {
+  background: var(--color-hover);
+  box-shadow: inset 0 0 0 1px var(--color-teal);
+}
