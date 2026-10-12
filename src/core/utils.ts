@@ -17,10 +17,25 @@ export const WIDTH = {
   WIDE: 'wide',
 } as const;
 
+// Chrome sizes a popup from its content and caps it at 800x600, with no resize
+// handle of its own -- so a popup that asks for more than 800 is clipped, not
+// scrolled. MAX stays below that for the same reason the old fixed 720 did:
+// headroom. MIN is the compact width, so dragging all the way in lands on the
+// size the popup has when wide mode is off rather than somewhere narrower.
+// Set on <html> beside data-theme and data-width; styles.css reads it.
+export const WIDE_WIDTH_PROPERTY = '--wide-width';
+
+export const WIDE_WIDTH = {
+  MIN: 380,
+  MAX: 780,
+  DEFAULT: 720,
+} as const;
+
 // Only the fallbacks normalizeSettings needs. `theme` is resolved there rather
 // than here, because its default is the OS preference, not a constant.
 export const DEFAULT_SETTINGS: Omit<Settings, 'theme'> = {
   width: WIDTH.COMPACT,
+  wideWidth: WIDE_WIDTH.DEFAULT,
   reminder: {
     enabled: false,
     time: '09:00',
@@ -108,6 +123,24 @@ export function switchTheme(theme: Theme): Theme {
 
 export function nextWidth(width: Width): Width {
   return width === WIDTH.WIDE ? WIDTH.COMPACT : WIDTH.WIDE;
+}
+
+// The single gate for a wide width, used by the normalizer AND the reducer, so
+// a value out of range cannot enter the state from storage or from a drag.
+// Rounded because it ends up in a px string, and a fractional width would make
+// Chrome re-measure the popup on every pointermove for no visible gain.
+export function clampWideWidth(value: unknown): number {
+  const width = Math.round(Number(value));
+  if (!Number.isFinite(width)) {
+    return WIDE_WIDTH.DEFAULT;
+  }
+  if (width < WIDE_WIDTH.MIN) {
+    return WIDE_WIDTH.MIN;
+  }
+  if (width > WIDE_WIDTH.MAX) {
+    return WIDE_WIDTH.MAX;
+  }
+  return width;
 }
 
 // The `typeof window` guard is load-bearing: a service worker has no window, and

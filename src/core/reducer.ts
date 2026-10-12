@@ -14,7 +14,17 @@
 // persisted and do not belong here.
 
 import { Task, Priority, State, TimeOfDay } from './types.ts';
-import { isAllDone, isTimeOfDay, moveItem, nextWidth, parseDraft, setAllDone, sortByPriority, switchTheme } from './utils.ts';
+import {
+  clampWideWidth,
+  isAllDone,
+  isTimeOfDay,
+  moveItem,
+  nextWidth,
+  parseDraft,
+  setAllDone,
+  sortByPriority,
+  switchTheme,
+} from './utils.ts';
 
 export type Action =
   | { type: 'ADD_ITEM'; text: string }
@@ -28,6 +38,7 @@ export type Action =
   | { type: 'CLEAR_ALL' }
   | { type: 'SET_THEME' }
   | { type: 'SET_WIDTH' }
+  | { type: 'SET_WIDE_WIDTH'; width: number }
   | { type: 'SET_REMINDER_ENABLED' }
   | { type: 'SET_REMINDER_TIME'; time: TimeOfDay }
   | { type: 'REPLACE_STATE'; state: State };
@@ -151,6 +162,14 @@ export function reducer(state: State, action: Action): State {
 
     case 'SET_WIDTH': {
       return { ...state, settings: { ...state.settings, width: nextWidth(state.settings.width) } };
+    }
+
+    case 'SET_WIDE_WIDTH': {
+      const wideWidth = clampWideWidth(action.width);
+      if (wideWidth === state.settings.wideWidth) {
+        return state;
+      }
+      return { ...state, settings: { ...state.settings, wideWidth } };
     }
 
     case 'SET_REMINDER_ENABLED': {

@@ -6,8 +6,9 @@ import { Action, reducer } from '../core/reducer.ts';
 import { DayKey } from '../core/types.ts';
 import { downloadCsv } from '../features/export.ts';
 import { useDragDrop } from '../hooks/useDragDrop.ts';
+import { useWidthDrag } from '../hooks/useWidthDrag.ts';
 import { groupByDay } from '../core/day_utils.ts';
-import { progressPercent } from '../core/utils.ts';
+import { WIDE_WIDTH_PROPERTY, WIDTH, clampWideWidth, progressPercent } from '../core/utils.ts';
 import { SETTINGS_KEY, normalizeSettings } from '../storages/settings.ts';
 import { emptyState, loadState, persistChanged } from '../storages/state.ts';
 import { TASKS_KEY, normalizeTasks } from '../storages/tasks.ts';
@@ -17,6 +18,7 @@ import { EmptyState } from './EmptyState.tsx';
 import { Header } from './Header.tsx';
 import { PopupRow } from './PopupRow.tsx';
 import { Progress } from './Progress.tsx';
+import { WidthGrip } from './WidthGrip.tsx';
 import { SettingsPanel } from './SettingsPanel.tsx';
 
 export function PopupPage(): React.JSX.Element {
@@ -99,7 +101,16 @@ export function PopupPage(): React.JSX.Element {
   useEffect(() => {
     document.documentElement.dataset.theme = state.settings.theme;
     document.documentElement.dataset.width = state.settings.width;
-  }, [state.settings.theme, state.settings.width]);
+    document.documentElement.style.setProperty(WIDE_WIDTH_PROPERTY, `${state.settings.wideWidth}px`);
+  }, [state.settings.theme, state.settings.width, state.settings.wideWidth]);
+
+  const gripHandlers = useWidthDrag({
+    width: state.settings.wideWidth,
+    clamp: clampWideWidth,
+    onCommit: (next: number) => {
+      dispatch({ type: 'SET_WIDE_WIDTH', width: next });
+    },
+  });
 
   const { rowProps, groupProps } = useDragDrop({
     onRowDrop: ({ from, to, dayKey }) => {
@@ -113,8 +124,13 @@ export function PopupPage(): React.JSX.Element {
 
   const groups = groupByDay(state.tasks);
 
+  const isWide = state.settings.width === WIDTH.WIDE;
+
   return (
     <>
+      {isWide ? <WidthGrip side="left" handlers={gripHandlers('left')} /> : null}
+      {isWide ? <WidthGrip side="right" handlers={gripHandlers('right')} /> : null}
+
       <Header
         state={state}
         onMarkAll={() => {

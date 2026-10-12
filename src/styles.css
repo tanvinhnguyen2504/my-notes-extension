@@ -158,7 +158,16 @@ html[data-theme='dark'] {
    room. 720 leaves headroom under the cap; a popup that asks for more than 800
    gets clipped, not scrolled. */
 html[data-width='wide'] body {
-  width: 720px;
+  /* The number comes from --wide-width, which PopupPage sets on <html> beside
+     data-theme and data-width. The fallback is not decoration: during a drag
+     the property is written straight to the element rather than through React,
+     and on a page that never sets it this is the width. */
+  width: var(--wide-width, 720px);
+  /* No `resize: horizontal`: that grip is the bottom-right CORNER only, and
+     the edges are what we want -- WidthGrip does it. These two stay as a
+     backstop so a bad --wide-width can still never paint out of range. */
+  min-width: 380px;
+  max-width: 780px;
 }
 
 /* The reminder window is sized by chrome.windows.create, so it fills whatever

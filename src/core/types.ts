@@ -34,6 +34,10 @@ export interface ReminderSettings {
 export interface Settings {
   theme: Theme;
   width: Width;
+  // Pixels, and only meaningful while `width` is WIDE. A plain number rather
+  // than a branded type: the guards in utils.ts do the enforcing, and every
+  // read already passes through clampWideWidth.
+  wideWidth: number;
   reminder: ReminderSettings;
 }
 
