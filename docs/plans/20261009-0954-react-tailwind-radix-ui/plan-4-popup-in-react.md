@@ -15,7 +15,7 @@ rows and every interaction except the priority menu and the drag gesture.
 - [ ] `src/components/PopupPage.tsx`: owns `useReducer(reducer, ...)`, the
       initial `loadState()` effect, the `chrome.storage.onChanged` subscription,
       and the save-on-local-dispatch wrapper from phase 2.
-- [ ] `src/components/Header.tsx`: count, mark-all/unmark-all, the two-step
+- [ ] `src/components/TaskHeader.tsx`: count, mark-all/unmark-all, the two-step
       clear, CSV export, settings trigger. `clearArmed` is `useState` here, with
       its 3000 ms timer in an effect that cleans up on unmount.
 - [ ] `src/components/Progress.tsx`: the track and fill, width from
