@@ -2,8 +2,8 @@
 // never be persisted.
 
 import { useEffect, useState } from 'react';
-import { State } from '../core/types.ts';
-import { countDone, isAllDone } from '../core/utils.ts';
+import { State } from '@/src/core/types';
+import { countDone, isAllDone } from '@/src/core/utils';
 
 const CLEAR_CONFIRM_MS = 3000;
 
@@ -27,14 +27,12 @@ export const CHIP_HOVER = 'hover:text-ink disabled:hover:text-dim';
 
 export interface HeaderProps {
   state: State;
-  isSettingsOpen: boolean;
   onMarkAll: () => void;
   onClearAll: () => void;
   onExport: () => void;
-  onSwitchSettingDetails: (flag: boolean) => void;
 }
 
-export function Header({ state, isSettingsOpen, onMarkAll, onClearAll, onExport, onSwitchSettingDetails }: HeaderProps): React.JSX.Element {
+export function TaskHeader({ state, onMarkAll, onClearAll, onExport }: HeaderProps): React.JSX.Element {
   const [armed, setArmed] = useState(false);
   const isEmpty = state.tasks.length === 0;
   const allDone = isAllDone(state.tasks);
@@ -115,16 +113,6 @@ export function Header({ state, isSettingsOpen, onMarkAll, onClearAll, onExport,
         onClick={onExport}
       >
         ↓
-      </button>
-
-      <button
-        className={`${CHIP_ICON} ${CHIP_HOVER}`}
-        type="button"
-        title="Settings"
-        aria-label="Settings"
-        onClick={() => onSwitchSettingDetails(!isSettingsOpen)}
-      >
-        ⚙
       </button>
     </header>
   );

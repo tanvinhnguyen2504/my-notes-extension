@@ -2,12 +2,12 @@
 // chrome.storage.onChanged.
 
 import { useEffect, useReducer } from 'react';
-import { Action, reducer } from '../core/reducer.ts';
-import { State } from '../core/types.ts';
-import { sortByPriority } from '../core/utils.ts';
-import { emptyState, loadState, persistChanged } from '../storages/state.ts';
-import { CHIP, CHIP_HOVER } from './Header.tsx';
-import { NoteRow } from './NoteRow.tsx';
+import { Action, reducer } from '@/src/core/reducer';
+import { State } from '@/src/core/types';
+import { sortByPriority } from '@/src/core/utils';
+import { emptyState, loadState, persistChanged } from '@/src/storages/state';
+import { CHIP, CHIP_HOVER } from './TaskHeader';
+import { NoteRow } from './NoteRow';
 
 function usePageState(): [State, (action: Action) => void] {
   const [state, rawDispatch] = useReducer(reducer, null, () => {
