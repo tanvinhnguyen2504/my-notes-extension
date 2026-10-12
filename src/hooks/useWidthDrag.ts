@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { WIDE_WIDTH_PROPERTY } from '../core/utils.ts';
+import { WIDE_WIDTH_PROPERTY } from '@/src/core/utils';
 
 export type GripSide = 'left' | 'right';
 
@@ -22,7 +22,6 @@ export interface GripHandlers {
 }
 
 export function useWidthDrag({ width, clamp, onCommit }: UseWidthDragOptions): (side: GripSide) => GripHandlers {
-  // Refs, not state: reading these must never cause a render.
   const startXRef = useRef(0);
   const startWidthRef = useRef(0);
   const liveWidthRef = useRef(0);
@@ -36,8 +35,7 @@ export function useWidthDrag({ width, clamp, onCommit }: UseWidthDragOptions): (
         return;
       }
       draggingRef.current = true;
-      // screenX, not clientX: resizing moves the popup window, which shifts the
-      // viewport origin mid-drag, so clientX drifts while the pointer is still.
+      // screenX: resizing moves the window, so clientX drifts under a still pointer.
       startXRef.current = event.screenX;
       startWidthRef.current = width;
       liveWidthRef.current = width;
@@ -45,13 +43,8 @@ export function useWidthDrag({ width, clamp, onCommit }: UseWidthDragOptions): (
       event.preventDefault();
     };
 
-    // Every exit runs through here, and `lostpointercapture` is the one that
-    // matters: when the release lands outside the window Chrome delivers NO
-    // pointerup, no pointercancel and no further pointermove -- only that.
-    // Without it the drag stays armed and, worse, the width the user dragged to
-    // is never committed, so it silently reverts the next time the popup opens.
-    // Re-entrant by design: a normal pointerup releases capture, which fires
-    // lostpointercapture straight after, and the guard below makes it a no-op.
+    // A release outside the window fires only lostpointercapture -- no
+    // pointerup, no pointercancel. Re-entrant; the guard makes the second a no-op.
     const endDrag = (event: React.PointerEvent<HTMLElement>): void => {
       if (!draggingRef.current) {
         return;

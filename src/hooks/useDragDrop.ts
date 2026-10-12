@@ -1,20 +1,9 @@
-// Drag-to-reorder and drag-to-reschedule, as a hook.
-//
-// Native HTML5 events, deliberately. The two properties that make this work are
-// carried over from the imperative version: the dragged index lives in a ref,
-// and hover markers are applied with classList rather than by rendering. A
-// dragover fires continuously, so rendering from it would be the one thing this
-// must not do -- the budget is exactly one render per drag, on the drop.
-//
-// Mutating classList on nodes React owns is normally wrong, because the next
-// render overwrites it. It is safe here precisely BECAUSE nothing renders during
-// the drag, and every marker is cleared on drop before the render that follows.
-//
-// This hook never reads or writes the list. A completed drop is reported as
-// plain data and the caller decides what it means.
+// Nothing here may render: dragover fires continuously, so the dragged index is
+// a ref and markers go on with classList. That is also what makes mutating
+// classList on React's nodes safe -- every marker is cleared before the drop's render.
 
 import { useRef } from 'react';
-import { DayKey } from '../core/types.ts';
+import { DayKey } from '@/src/core/types';
 
 const CLASS = {
   DRAGGING: 'dragging',
@@ -27,15 +16,13 @@ const MARKER_SELECTOR = `.${CLASS.DROP_BEFORE}, .${CLASS.DROP_AFTER}, .${CLASS.D
 
 export type DropSide = 'before' | 'after';
 
-// `to` indexes the array as it was BEFORE the move -- the coordinate system
-// moveItem() expects. `dayKey` is the group landed in, null for unscheduled.
+// `to` indexes the array as it was BEFORE the move, as moveItem() expects.
 export interface RowDrop {
   from: number;
   to: number;
   dayKey: DayKey | null;
 }
 
-// Dropped on a group header: reschedule only, no reorder.
 export interface GroupDrop {
   from: number;
   dayKey: DayKey | null;
@@ -51,13 +38,11 @@ export interface DragController {
   groupProps: (dayKey: DayKey | null) => React.HTMLAttributes<HTMLElement>;
 }
 
-// Above the row's midpoint lands before it, below lands after.
 export function dropSide(row: HTMLElement, clientY: number): DropSide {
   const bounds = row.getBoundingClientRect();
   return clientY > bounds.top + bounds.height / 2 ? 'after' : 'before';
 }
 
-// An index into the ORIGINAL array, as moveItem() expects.
 export function insertionIndex(hoveredIndex: number, side: DropSide): number {
   return side === 'after' ? hoveredIndex + 1 : hoveredIndex;
 }
@@ -69,12 +54,9 @@ function clearMarkers(within: HTMLElement | Document): void {
 }
 
 export function useDragDrop({ onRowDrop, onGroupDrop }: UseDragDropOptions): DragController {
-  // A ref, not state: this changes on dragstart and dragend and must not cause
-  // a render. Null whenever no drag is in flight, which is also how every
-  // handler opts out.
   const draggedIndex = useRef<number | null>(null);
 
-  // Without preventDefault the browser refuses the drop outright.
+  // Without preventDefault the browser refuses the drop.
   const acceptHover = (event: React.DragEvent): void => {
     event.preventDefault();
     if (event.dataTransfer) {
@@ -87,13 +69,11 @@ export function useDragDrop({ onRowDrop, onGroupDrop }: UseDragDropOptions): Dra
       onDragStart: (event: React.DragEvent<HTMLElement>) => {
         draggedIndex.current = index;
         event.currentTarget.classList.add(CLASS.DRAGGING);
-        // Guarded after the state is set: the rest of the gesture still has to
-        // work when dataTransfer is absent.
         if (!event.dataTransfer) {
           return;
         }
         event.dataTransfer.effectAllowed = 'move';
-        // Firefox ignores a drag that carries no payload.
+        // Firefox ignores a drag with no payload.
         event.dataTransfer.setData('text/plain', String(index));
       },
 
@@ -123,8 +103,7 @@ export function useDragDrop({ onRowDrop, onGroupDrop }: UseDragDropOptions): Dra
           return;
         }
         event.preventDefault();
-        // Read off the marker rather than recomputed, so the drop lands where
-        // the user actually saw it.
+        // Read off the marker, so the drop lands where the user saw it.
         const side: DropSide = event.currentTarget.classList.contains(CLASS.DROP_AFTER) ? 'after' : 'before';
         const from = draggedIndex.current;
         draggedIndex.current = null;

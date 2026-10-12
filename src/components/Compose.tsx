@@ -1,7 +1,3 @@
-// No isComposing guard: the suspected IME duplicate-Enter is a documented,
-// unconfirmed loose end, and fixing it here would hide a behaviour change
-// inside a migration.
-
 import { useState } from 'react';
 
 export interface ComposeProps {

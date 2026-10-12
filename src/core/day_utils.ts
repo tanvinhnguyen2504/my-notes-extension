@@ -1,10 +1,9 @@
-import { DayKey, Task } from './types.ts';
-import { DayGroup, DayGroupEntry, DayGroupLabel } from './types/day.ts';
+import { DayKey, Task } from './types';
+import { DayGroup, DayGroupEntry, DayGroupLabel } from './types/day';
 
 const DAY_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const DAY_TOKEN_PATTERN = /(?:^|\s)@(\S+)/i;
 
-// Items predating updatedAt render blank rather than a made-up date.
 export function formatDate(timestamp: number | null): string {
   if (!timestamp) {
     return '';
@@ -15,17 +14,14 @@ export function formatDate(timestamp: number | null): string {
 }
 
 // --- days -------------------------------------------------------------
-// Stored as "YYYY-MM-DD", not timestamps: an assigned day has no time
-// component, and an instant would shift calendar day by timezone.
+// "YYYY-MM-DD", not timestamps: an instant would shift calendar day by timezone.
 
-// For values already known to be strings. Separate from isDayKey because DayKey
-// aliases string, so the predicate narrows a failing already-string value to
-// `never` -- which broke parseDayInput.
+// Separate from isDayKey: DayKey aliases string, so that predicate narrows a
+// failing already-string value to `never`.
 function matchesDayKey(value: string): boolean {
   return DAY_KEY_PATTERN.test(value);
 }
 
-// For values off storage or the DOM, where the type really is unknown.
 export function isDayKey(value: unknown): value is DayKey {
   return typeof value === 'string' && matchesDayKey(value);
 }
@@ -51,13 +47,11 @@ export function formatDayKey(key: string): string {
   if (!isDayKey(key)) {
     return '';
   }
-  // isDayKey has matched, so all three parts exist; the defaults only satisfy
-  // the compiler.
+  // isDayKey matched, so the defaults only satisfy the compiler.
   const [year = '', month = '', day = ''] = key.split('-');
   return `${day}/${month}/${year}`;
 }
 
-// NoteRow-width: the year is almost always the current one and costs space.
 export function formatDayKeyShort(key: string): string {
   if (!isDayKey(key)) {
     return '';
@@ -66,7 +60,6 @@ export function formatDayKeyShort(key: string): string {
   return `${day}/${month}`;
 }
 
-// Words read faster than dates when scanning for what to do now.
 export function dayGroupLabel(key: DayKey | null, reference: DayKey = todayKey()): DayGroupLabel {
   if (!isDayKey(key)) {
     return 'UNSCHEDULED';
@@ -83,7 +76,7 @@ export function dayGroupLabel(key: DayKey | null, reference: DayKey = todayKey()
   return key < reference ? 'OVERDUE' : 'UPCOMING';
 }
 
-// Accepts "today", "tomorrow", "yesterday", "DD/MM" and "DD/MM/YYYY".
+// Accepts "today", "tomorrow", "yesterday", "DD/MM", "DD/MM/YYYY".
 export function parseDayInput(value: unknown): DayKey | null {
   const text = String(value).trim().toLowerCase();
   if (!text) {
@@ -115,14 +108,13 @@ export function parseDayInput(value: unknown): DayKey | null {
   }
 
   const date = new Date(year, month - 1, day);
-  // Rejects impossible dates like 31/02, which Date silently rolls forward.
+  // Rejects 31/02, which Date silently rolls forward.
   if (date.getMonth() !== month - 1 || date.getDate() !== day) {
     return null;
   }
   return toDayKey(date);
 }
 
-// Pulls an "@day" token out of the draft text, returning the text without it.
 export function extractDayToken(text: string): { text: string; dueDate: DayKey | null } {
   const match = text.match(DAY_TOKEN_PATTERN);
   if (!match) {
@@ -136,8 +128,6 @@ export function extractDayToken(text: string): { text: string; dueDate: DayKey |
   return { text: text.replace(match[0], ' ').replace(/\s+/g, ' ').trim(), dueDate };
 }
 
-// Section order. Today leads because it is the one section you always want
-// without scrolling; OVERDUE sits directly under it rather than being buried.
 const RANK = { TODAY: 0, OVERDUE: 1, UPCOMING: 2, UNSCHEDULED: 3 } as const;
 
 function groupRank(key: string, reference: DayKey): number {
@@ -150,8 +140,7 @@ function groupRank(key: string, reference: DayKey): number {
   return key < reference ? RANK.OVERDUE : RANK.UPCOMING;
 }
 
-// Keeps each item's index into the original array: row handlers address
-// state.items by index.
+// Keeps each item's original index: row handlers address state.tasks by index.
 export function groupByDay(items: Task[], reference: DayKey = todayKey()): DayGroup[] {
   const groups = new Map<string, DayGroupEntry[]>();
 
@@ -181,8 +170,7 @@ export function groupByDay(items: Task[], reference: DayKey = todayKey()): DayGr
       if (a.key === b.key) {
         return 0;
       }
-      // Soonest first, except in OVERDUE where the most recently missed day is
-      // the one you are likeliest to act on.
+      // Soonest first, except OVERDUE which runs most-recently-missed first.
       const ascending = a.key < b.key ? -1 : 1;
       return groupRank(a.key, reference) === RANK.OVERDUE ? -ascending : ascending;
     });

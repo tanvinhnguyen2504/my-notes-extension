@@ -1,33 +1,18 @@
-// The shared row, used by both pages. It must stay free of reducer dispatch,
-// drag wiring and Radix imports -- the popup's interactive behaviour belongs in
-// a wrapper, not in here.
-//
-// The row is Tailwind's `group`, which is how the child utilities below reach
-// its data-priority and data-done. It also keeps the bare `row` class: that is
-// the hook styles.css needs for the four classList drag markers and for
-// `body.reminder .row`.
+// The bare `row` class is a hook styles.css needs for the drag markers and
+// `body.reminder .row`; the `group` class is how children read data-priority.
 
-import { formatDayKeyShort } from '../core/day_utils.ts';
-import { Task } from '../core/types.ts';
-import { PRIORITY_LABELS } from '../core/utils.ts';
+import { formatDayKeyShort } from '@/src/core/day_utils';
+import { Task } from '@/src/core/types';
+import { PRIORITY_LABELS } from '@/src/core/utils';
 
-// Priority colour is stated as priority AND not-done, rather than relying on
-// source order. The CSS this replaced had the done rule sitting below the three
-// priority rules at equal specificity, so swapping their order silently left
-// finished rows shouting in full colour. Utilities are sorted by the compiler
-// rather than by the order they are written, so mutually exclusive variants are
-// the only safe way to say it.
-//
-// These three are exported because PopupRow renders its own interactive flag,
-// pill and chip into the slots below and they must look identical.
+// Stated as priority AND not-done: Tailwind sorts utilities by property, not by
+// the order written, so mutually exclusive variants are the only safe way.
 export const FLAG_CLASS =
   'flex-none w-[9px] rounded-none transition-[width,background] duration-[120ms] ease-[ease] ' +
   'group-data-[priority=0]:group-data-[done=false]:bg-pri-low ' +
   'group-data-[priority=1]:group-data-[done=false]:bg-pri-medium ' +
   'group-data-[priority=2]:group-data-[done=false]:bg-pri-high';
 
-// The last line is the one that matters: a completed task's priority stops
-// mattering and the pill steps back.
 export const TAG_CLASS =
   'flex-none py-[3px] px-[5px] rounded-[4px] text-[9.5px] font-medium leading-none tracking-[0.06em] ' +
   'group-data-[priority=0]:group-data-[done=false]:bg-tag-low-bg group-data-[priority=0]:group-data-[done=false]:text-tag-low-fg ' +
@@ -35,20 +20,14 @@ export const TAG_CLASS =
   'group-data-[priority=2]:group-data-[done=false]:bg-tag-high-bg group-data-[priority=2]:group-data-[done=false]:text-tag-high-fg ' +
   'group-data-[done=true]:bg-hair group-data-[done=true]:text-soft';
 
-// Deliberately quieter than the priority pill -- it is a date, not a state, and
-// it should not compete with the task text.
 export const DUE_CLASS =
   'flex-none py-[3px] px-[5px] rounded-[4px] text-[9.5px] font-medium leading-none tracking-[0.06em] ' +
   'text-dim bg-chip group-data-[done=true]:text-soft';
 
 export interface RowProps {
   item: Task;
-  onToggle: () => void;
   boxTitle?: string;
-  onTextDoubleClick?: () => void;
-  onDelete?: () => void;
-  // Slots, so the popup can inject its interactive controls without this
-  // component knowing what they are.
+  // Slots for the popup's interactive controls.
   text?: React.ReactNode;
   flag?: React.ReactNode;
   tag?: React.ReactNode;
@@ -56,14 +35,15 @@ export interface RowProps {
   children?: React.ReactNode;
   draggable?: boolean;
   dragHandlers?: React.HTMLAttributes<HTMLDivElement>;
+  onToggle: () => void;
+  onTextDoubleClick?: () => void;
+  onDelete?: () => void;
 }
 
 export function NoteRow({
   item,
-  onToggle,
   boxTitle = 'Toggle done',
-  onTextDoubleClick,
-  onDelete,
+
   text,
   flag,
   tag,
@@ -71,12 +51,14 @@ export function NoteRow({
   children,
   draggable,
   dragHandlers,
+  onToggle,
+  onTextDoubleClick,
+  onDelete,
 }: RowProps): React.JSX.Element {
   return (
     <div
       className="row group flex items-stretch min-h-[44px] border-b border-hair"
-      // Strings, not booleans: React omits a `false` attribute entirely, and
-      // every group-data variant above matches on the literal "false".
+      // Strings: React omits a `false` attribute entirely.
       data-priority={String(item.priority)}
       data-done={String(item.done)}
       draggable={draggable}
