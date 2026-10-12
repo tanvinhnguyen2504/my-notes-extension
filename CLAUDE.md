@@ -34,12 +34,12 @@ entry points, and nothing imports upward.
 | ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
 | `wxt.config.ts`                                                                                              | Build config + the manifest fields. `storage` + `alarms`, no host permissions. `imports: false`                  |
 | `tsconfig.json`                                                                                              | Extends `.wxt/tsconfig.json`; adds only `erasableSyntaxOnly`                                                     |
-| `entrypoints/popup.html`                                                                                     | `<div id="root">`, the stylesheet link, and the module script. Nothing else                                      |
+| `entrypoints/popup.html`                                                                                     | `<div id="root">` and the module script. Nothing else -- **no stylesheet link**, see the trap below              |
 | `entrypoints/reminder.html`                                                                                  | The reminder window's page                                                                                       |
 | `entrypoints/background.ts`                                                                                  | Service worker. Owns the reminder alarm and opens its window                                                     |
 | `src/styles.css`                                                                                             | `@theme` tokens, the globals, and the rules that cannot be utilities. Serves the popup _and_ the reminder window |
-| `src/popup.tsx`                                                                                              | React root for the popup. Mounts and nothing else                                                                |
-| `src/reminder.tsx`                                                                                           | React root for the reminder window                                                                               |
+| `src/popup.tsx`                                                                                              | React root for the popup. Imports `styles.css`, then mounts                                                      |
+| `src/reminder.tsx`                                                                                           | React root for the reminder window. Imports `styles.css` too                                                     |
 | `src/core/types.ts`                                                                                          | `Item`, `State`, `Settings`, `Priority`, `DayKey` and friends. Types only                                        |
 | `src/core/utils.ts`                                                                                          | Parsing, priority, theme/width, task helpers. Pure. **No DOM access, no storage**                                |
 | `src/storages/local.ts`                                                                                      | The only module that talks to a backend. chrome/localStorage fallback                                            |
@@ -54,15 +54,23 @@ entry points, and nothing imports upward.
 | `src/components/NoteRow.tsx`                                                                                 | The shared row. Presentational, slot-based, used by both pages                                                   |
 | `src/components/PopupRow.tsx`                                                                                | Wraps `NoteRow` with the menu, chip, editing, deletion and drag                                                  |
 | `src/components/PriorityMenu.tsx`                                                                            | Radix `DropdownMenu`. Replaced 129 lines of hand-rolled popover                                                  |
+| `src/components/SettingDetailsPanel.tsx`                                                                     | The settings body. A sibling of `<header>`, never inside it                                                      |
+| `src/components/SettingsPanel.tsx`                                                                           | **Dead.** The old Radix `Collapsible` wrapper, now bypassed                                                      |
 | `src/components/{Header,Compose,Progress,DayGroupSection,DueChip,EditableText,EmptyState,SettingSwitch}.tsx` | The rest of the tree                                                                                             |
 | `src/hooks/useDragDrop.ts`                                                                                   | HTML5 drag events, drop markers, and the dragged-row ref                                                         |
+| `src/hooks/useWidthDrag.ts`                                                                                  | Edge-drag resize. Pointer capture, writes `--wide-width`, commits on release                                     |
+| `src/components/WidthGrip.tsx`                                                                               | The draggable edge. `fixed`, one per side, wide mode only                                                        |
 | `src/features/export.ts`                                                                                     | CSV export of the list. The only non-component feature                                                           |
 | `public/icons/`                                                                                              | Copied verbatim to the output root                                                                               |
 
 Both HTML entrypoints are a `<div id="root">` plus a `<script type="module">`
 pointing at a `.tsx` root, and Vite bundles each entrypoint with everything it
-imports. `background.ts` is declared `type: "module"` through `defineBackground`
-so it can import `utils.ts` too.
+imports. **The stylesheet is one of those imports** -- `popup.tsx` and
+`reminder.tsx` each begin `import './styles.css'`, and neither HTML file links
+it. Vite emits the `<link rel="stylesheet">` into the built HTML itself, so
+production is unchanged; dev is the reason, see the trap below.
+`background.ts` is declared `type: "module"` through `defineBackground` so it
+can import `utils.ts` too.
 
 Import specifiers carry explicit `.ts` / `.tsx` extensions, and the `@/` alias
 WXT offers is deliberately unused.
@@ -124,6 +132,16 @@ untouched under plain `node` — see Testing.
 - **Preflight is not imported, so no reset exists** beyond the `*`, `body` and
   `button` rules in `styles.css`. A utility that assumes Preflight can silently
   do nothing.
+- **The reset lives in `@layer base`, and the overrides stay unlayered. The
+  difference is load-bearing.** An unlayered rule beats every layer at any
+  specificity, so where a rule sits decides whether it beats a utility or loses
+  to one. `*`, `body` and `button` are a _reset_ -- utilities must win, so they
+  are wrapped in `@layer base`. The `html[data-width="wide"]`, `body.reminder`
+  and `.row.drop-*` rules are _overrides_ -- they must beat utilities, so they
+  stay unlayered. Putting a rule on the wrong side of that line fails silently
+  in whichever direction it was moved. `@layer theme, base, components,
+utilities;` at the top of `styles.css` is what fixes the order; without it the
+  order is first-appearance, which puts `base` _after_ `utilities`.
 - **Types are derived, never restated.** `Priority` is
   `(typeof PRIORITY)[keyof typeof PRIORITY]`, so adding a level to the const
   object widens the type automatically. Never a TS `enum`: non-erasable syntax
@@ -170,7 +188,12 @@ whose **reference** changed, which is exact rather than merely fast because the
 reducer guarantees a changed slice is a new reference and an unchanged one is
 the same reference. Never write a slice the reducer did not change.
 
-`settings` is `{ theme, width, reminder: { enabled, time } }`. `theme` used to
+`settings` is `{ theme, width, wideWidth, reminder: { enabled, time } }`.
+`wideWidth` is px and only means anything while `width` is WIDE; `WidthGrip`
+does the dragging, and `clampWideWidth()` holds it to
+`WIDE_WIDTH.MIN..MAX` in both the normalizer and the reducer. It needed no
+migration: the normalizer turns a missing value into the default like any
+other. `theme` used to
 sit outside `settings` so that moving it would not reset the saved theme for
 every existing user; with no migration kept, that constraint is simply gone and
 theme lives where it belongs. `normalizeSettings()` always returns a
@@ -328,6 +351,82 @@ callbacks, which stay inline but still take a block body.
   state, a controlled `<input type="time">` would overwrite "0:3" with the last
   good value while the user was still typing. Only a complete time reaches the
   reducer, which rejects the rest through `isTimeOfDay`.
+- **A `<link rel="stylesheet">` to `src/styles.css` works in `wxt build` and
+  silently applies nothing under `wxt dev`.** The dev server rewrites the href
+  to `http://localhost:3000/src/styles.css`, and Vite serves that path as
+  `Content-Type: text/javascript` -- a module that injects the CSS through HMR,
+  which is correct for an `import` and useless for a `<link>`. Browsers enforce
+  strict MIME checking on stylesheets, so the response is discarded with no
+  error in the console beyond a MIME warning, and the popup renders completely
+  unstyled. The same URL with `?direct` returns `text/css`, which is how to
+  confirm the stylesheet itself compiled. The fix is to import the stylesheet
+  from the `.tsx` root rather than link it, which is what both roots now do.
+  **The two modes fail in opposite directions:** the production build is the
+  one that makes the `<link>` look correct.
+- **An unlayered `button {}` reset silently beat every utility on every
+  button.** `button { font: inherit; color: inherit; background: none;
+border: 0; padding: 0; }` sat unlayered while all component styling moved into
+  `@layer utilities`, and an unlayered rule wins against a layer regardless of
+  specificity. Those five declarations therefore killed `bg-*`, `border-*`,
+  `p-*`/`px-*`/`py-*`, the text colours and -- via `font: inherit` -- every
+  `text-[Npx]` and `font-medium`, on all 11 buttons in the app. The symptoms
+  read as application bugs, not CSS ones: no priority edge strip, no priority
+  pills, no checkbox box, no due chips, no header chip outlines, and every label
+  rendering at the body's 13.5px. **Nothing errors and the class is present in
+  the emitted CSS**, so grepping the stylesheet proves nothing -- the rule is
+  there, the selector matches, and it loses the cascade anyway. The tell is
+  `getComputedStyle(el).backgroundColor === "rgba(0, 0, 0, 0)"` on an element
+  whose `bg-*` class is right there in `className`. This is why the reset is now
+  in `@layer base`. The pre-Tailwind CSS hid it: that was unlayered too, so it
+  won on specificity.
+- **`!important` INVERTS layer order, so it must never appear in `@layer
+base`.** For important declarations the cascade reverses: an earlier layer
+  beats a later one, and a layered important beats an unlayered normal rule. So
+  `body { height: 520px !important }` inside `base` was not merely "stronger" --
+  it became the strongest declaration in the file and silently overrode the
+  unlayered `body.reminder { height: 100vh }`, pinning the reminder window to
+  the popup's 520px. The popup looked perfect the whole time. If a declaration
+  in this file seems to need `!important`, the layer order is wrong instead.
+- **Deleting `@layer theme, base, components, utilities;` flattens the whole
+  app, and has already happened once.** It is one line, it looks redundant next
+  to the two `@import ... layer(...)` rules, and removing it is silent: the
+  build succeeds, every utility is still emitted, and the layer order quietly
+  falls back to first-appearance (`theme -> utilities -> base`), which puts the
+  reset last so it beats every utility. Prettier preserves the line (verified
+  against 3.9.10), so if it goes missing it was removed by hand. Checking takes
+  one command -- the built CSS must list `base` BEFORE `utilities`:
+  `grep -o '@layer [a-z, ]*[{;]' .output/chrome-mv3/assets/*.css`
+- **`#root` is part of the layout, and body's flex column does NOT reach past
+  it.** React renders into `<div id="root">`, so body has exactly one child and
+  `header`/`main`/`footer` are children of _that_. While `#root` was an
+  unstyled block, `body { display: flex; flex-direction: column }` laid out
+  `#root` alone and `flex-1` on `<main>` addressed a parent that was not a flex
+  container -- so the list never took the free space, never scrolled, and the
+  compose row was not pinned to the bottom, it merely followed the last row.
+  Nothing errored; the popup just sized itself to its content forever. This was
+  inert from the React migration until it was found, and the docs described the
+  pre-React structure the whole time. `#root` now carries the column itself,
+  including **`min-height: 0`** -- without that a flex item refuses to shrink
+  below its content, body's `max-height` only clips, and `<main>` still never
+  scrolls. It cannot be a utility: nothing in React renders `#root`.
+- **The unlayered `:focus-visible` beats every `outline-*` utility**, which is
+  the same cascade trap as the `button` reset but left in place deliberately.
+  The consequence is that a component cannot opt out of the focus ring from its
+  `className`: `Compose`'s input needed a rule in `styles.css` to give its ring
+  up to the row. **`EditableText` still carries a dead `outline-0`** and shows
+  the global ring regardless -- decide whether that is wanted before copying the
+  pattern.
+- **A resize drag must read `screenX`, never `clientX`.** Chrome anchors the
+  popup near the toolbar icon, so growing it moves the window's left edge --
+  which shifts the viewport origin mid-drag. `clientX` is viewport-relative, so
+  a perfectly still pointer reports a moving `clientX` and the width runs away
+  on its own, accelerating until it hits the clamp. `screenX` does not move
+  with the window. The same anchoring is why the two grips need opposite signs:
+  only the left edge actually travels.
+- **`resize: horizontal` gives a bottom-right CORNER grip, not edges.** It is
+  otherwise attractive -- the browser draws it and honours min/max-width -- but
+  it also writes an inline `width` on `<body>` that outranks the stylesheet and
+  survives a switch back to compact mode. Not used, for the corner alone.
 - **`else if` is not a guard clause.** A brace-normalising pass once rewrote
   `} else if (cond) { body }` into `} else { if (cond) {} body }`, which made the
   editor's `settle(false)` run for _every_ key except Enter -- typing one
@@ -387,13 +486,14 @@ that `styles.css` depends on, with no DOM at all.
   `formatDayKey`, `dayGroupLabel` and `parseDayInput` are internal helpers that
   need not be exported; `formatDate` has no caller at all. Left as-is
   deliberately -- dropping an `export` is a separate, easily-reviewed change.
-- **The Tailwind conversion is done but unverified by eye.** The ~40 component
-  classes are utilities on the components; `styles.css` keeps only the tokens,
-  the globals, the `<html>`/`<body>` descendant overrides and the four drag
-  classes. The emitted CSS and the markup contract are checked automatically,
-  but the side-by-side visual comparison against the pre-React build has never
-  been run. Riskiest: the priority menu's position and flip, since `.menu`'s
-  `position: fixed` was removed.
+- **The Tailwind conversion has now been checked by eye, and it was broken.**
+  The side-by-side against the pre-React build had never been run; doing it
+  found the unlayered `button` reset above, which had flattened every button in
+  the app. Popup light, popup dark and the reminder window have since been
+  rendered with seeded tasks and confirmed correct. Still unverified: the
+  priority menu's position and flip, since `.menu`'s `position: fixed` was
+  removed -- it needs an open menu to see, which a static render does not
+  produce.
 - **The date input renders inside the row body**, where the body's 11px flex gap
   reserves a column for it even at zero width -- so popup rows have ~11px less
   room for text than the pre-React build. `NoteRow`'s `children` slot exists for
