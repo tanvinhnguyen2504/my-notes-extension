@@ -27,13 +27,14 @@ export const CHIP_HOVER = 'hover:text-ink disabled:hover:text-dim';
 
 export interface HeaderProps {
   state: State;
-  settings: React.ReactNode;
+  isSettingsOpen: boolean;
   onMarkAll: () => void;
   onClearAll: () => void;
   onExport: () => void;
+  onSwitchSettingDetails: (flag: boolean) => void;
 }
 
-export function Header({ state, settings, onMarkAll, onClearAll, onExport }: HeaderProps): React.JSX.Element {
+export function Header({ state, isSettingsOpen, onMarkAll, onClearAll, onExport, onSwitchSettingDetails }: HeaderProps): React.JSX.Element {
   const [armed, setArmed] = useState(false);
   const isEmpty = state.tasks.length === 0;
   const allDone = isAllDone(state.tasks);
@@ -116,7 +117,15 @@ export function Header({ state, settings, onMarkAll, onClearAll, onExport }: Hea
         ↓
       </button>
 
-      {settings}
+      <button
+        className={`${CHIP_ICON} ${CHIP_HOVER}`}
+        type="button"
+        title="Settings"
+        aria-label="Settings"
+        onClick={() => onSwitchSettingDetails(!isSettingsOpen)}
+      >
+        ⚙
+      </button>
     </header>
   );
 }

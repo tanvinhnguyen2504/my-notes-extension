@@ -19,7 +19,7 @@ import { Header } from './Header.tsx';
 import { PopupRow } from './PopupRow.tsx';
 import { Progress } from './Progress.tsx';
 import { WidthGrip } from './WidthGrip.tsx';
-import { SettingsPanel } from './SettingsPanel.tsx';
+import { SettingDetailsPanel } from './SettingDetailsPanel.tsx';
 
 export function PopupPage(): React.JSX.Element {
   const [state, rawDispatch] = useReducer(reducer, null, () => {
@@ -133,6 +133,7 @@ export function PopupPage(): React.JSX.Element {
 
       <Header
         state={state}
+        isSettingsOpen={settingsOpen}
         onMarkAll={() => {
           dispatch({ type: 'MARK_ALL' });
         }}
@@ -142,32 +143,29 @@ export function PopupPage(): React.JSX.Element {
         onExport={() => {
           downloadCsv(state.tasks);
         }}
-        settings={
-          <SettingsPanel
-            state={state}
-            open={settingsOpen}
-            onOpenChange={setSettingsOpen}
-            onToggleTheme={() => {
-              dispatch({ type: 'SET_THEME' });
-            }}
-            onToggleWidth={() => {
-              dispatch({ type: 'SET_WIDTH' });
-            }}
-            onToggleReminder={() => {
-              dispatch({ type: 'SET_REMINDER_ENABLED' });
-            }}
-            onPickReminderTime={(time) => {
-              dispatch({ type: 'SET_REMINDER_TIME', time });
-            }}
-          />
-        }
+        onSwitchSettingDetails={setSettingsOpen}
       />
 
       <Progress percent={progressPercent(state.tasks)} />
 
-      {/* min-h-0 is what actually lets a flex child shrink below its content
-          and scroll; flex-1 alone is not enough. The sticky group headers key
-          off this element being the scroll container. */}
+      {settingsOpen ? (
+        <SettingDetailsPanel
+          state={state}
+          onToggleTheme={() => {
+            dispatch({ type: 'SET_THEME' });
+          }}
+          onToggleWidth={() => {
+            dispatch({ type: 'SET_WIDTH' });
+          }}
+          onToggleReminder={() => {
+            dispatch({ type: 'SET_REMINDER_ENABLED' });
+          }}
+          onPickReminderTime={(time) => {
+            dispatch({ type: 'SET_REMINDER_TIME', time });
+          }}
+        />
+      ) : null}
+
       <main id="list" className="flex-1 min-h-0 overflow-y-auto overscroll-contain py-[4px]">
         {state.tasks.length === 0 ? (
           <EmptyState />

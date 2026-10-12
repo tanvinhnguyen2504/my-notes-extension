@@ -30,35 +30,34 @@ Never commit, push, or tag without being asked explicitly. Full rule:
 The source sits under `src/`, laid out by layer: `core` ← `ui` ← `features` ←
 entry points, and nothing imports upward.
 
-| File | Owns |
-| --- | --- |
-| `wxt.config.ts` | Build config + the manifest fields. `storage` + `alarms`, no host permissions. `imports: false` |
-| `tsconfig.json` | Extends `.wxt/tsconfig.json`; adds only `erasableSyntaxOnly` |
-| `entrypoints/popup.html` | `<div id="root">`, the stylesheet link, and the module script. Nothing else |
-| `entrypoints/reminder.html` | The reminder window's page |
-| `entrypoints/background.ts` | Service worker. Owns the reminder alarm and opens its window |
-| `src/styles.css` | `@theme` tokens, the globals, and the rules that cannot be utilities. Serves the popup *and* the reminder window |
-| `src/popup.tsx` | React root for the popup. Mounts and nothing else |
-| `src/reminder.tsx` | React root for the reminder window |
-| `src/core/types.ts` | `Item`, `State`, `Settings`, `Priority`, `DayKey` and friends. Types only |
-| `src/core/utils.ts` | Parsing, priority, theme/width, task helpers. Pure. **No DOM access, no storage** |
-| `src/storages/local.ts` | The only module that talks to a backend. chrome/localStorage fallback |
-| `src/storages/tasks.ts` | `tasks.v1` slice: `normalizeTasks`, load, save |
-| `src/storages/settings.ts` | `settings.v1` slice, `theme` included |
-| `src/storages/memo.ts` | `memo.v1` slice. Reserved -- nothing reads a memo yet |
-| `src/storages/state.ts` | Assembles the slices into `State`; `persistChanged` writes only what changed |
-| `src/core/day_utils.ts` | Day keys, their formatting, and grouping items by day. **No DOM access** |
-| `src/core/reducer.ts` | The single place state changes. Pure, DOM-free, composed from `utils.ts` |
-| `src/components/PopupPage.tsx` | Owns the reducer, the storage subscription, and non-persisted view state |
-| `src/components/ReminderPage.tsx` | The reminder window: opens for HIGH-priority work, lists everything outstanding |
-| `src/components/NoteRow.tsx` | The shared row. Presentational, slot-based, used by both pages |
-| `src/components/PopupRow.tsx` | Wraps `NoteRow` with the menu, chip, editing, deletion and drag |
-| `src/components/PriorityMenu.tsx` | Radix `DropdownMenu`. Replaced 129 lines of hand-rolled popover |
-| `src/components/SettingsPanel.tsx` | Radix `Collapsible` + `Switch` |
-| `src/components/{Header,Compose,Progress,DayGroupSection,DueChip,EditableText,EmptyState,SettingSwitch}.tsx` | The rest of the tree |
-| `src/hooks/useDragDrop.ts` | HTML5 drag events, drop markers, and the dragged-row ref |
-| `src/features/export.ts` | CSV export of the list. The only non-component feature |
-| `public/icons/` | Copied verbatim to the output root |
+| File                                                                                                         | Owns                                                                                                             |
+| ------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `wxt.config.ts`                                                                                              | Build config + the manifest fields. `storage` + `alarms`, no host permissions. `imports: false`                  |
+| `tsconfig.json`                                                                                              | Extends `.wxt/tsconfig.json`; adds only `erasableSyntaxOnly`                                                     |
+| `entrypoints/popup.html`                                                                                     | `<div id="root">`, the stylesheet link, and the module script. Nothing else                                      |
+| `entrypoints/reminder.html`                                                                                  | The reminder window's page                                                                                       |
+| `entrypoints/background.ts`                                                                                  | Service worker. Owns the reminder alarm and opens its window                                                     |
+| `src/styles.css`                                                                                             | `@theme` tokens, the globals, and the rules that cannot be utilities. Serves the popup _and_ the reminder window |
+| `src/popup.tsx`                                                                                              | React root for the popup. Mounts and nothing else                                                                |
+| `src/reminder.tsx`                                                                                           | React root for the reminder window                                                                               |
+| `src/core/types.ts`                                                                                          | `Item`, `State`, `Settings`, `Priority`, `DayKey` and friends. Types only                                        |
+| `src/core/utils.ts`                                                                                          | Parsing, priority, theme/width, task helpers. Pure. **No DOM access, no storage**                                |
+| `src/storages/local.ts`                                                                                      | The only module that talks to a backend. chrome/localStorage fallback                                            |
+| `src/storages/tasks.ts`                                                                                      | `tasks.v1` slice: `normalizeTasks`, load, save                                                                   |
+| `src/storages/settings.ts`                                                                                   | `settings.v1` slice, `theme` included                                                                            |
+| `src/storages/memo.ts`                                                                                       | `memo.v1` slice. Reserved -- nothing reads a memo yet                                                            |
+| `src/storages/state.ts`                                                                                      | Assembles the slices into `State`; `persistChanged` writes only what changed                                     |
+| `src/core/day_utils.ts`                                                                                      | Day keys, their formatting, and grouping items by day. **No DOM access**                                         |
+| `src/core/reducer.ts`                                                                                        | The single place state changes. Pure, DOM-free, composed from `utils.ts`                                         |
+| `src/components/PopupPage.tsx`                                                                               | Owns the reducer, the storage subscription, and non-persisted view state                                         |
+| `src/components/ReminderPage.tsx`                                                                            | The reminder window: opens for HIGH-priority work, lists everything outstanding                                  |
+| `src/components/NoteRow.tsx`                                                                                 | The shared row. Presentational, slot-based, used by both pages                                                   |
+| `src/components/PopupRow.tsx`                                                                                | Wraps `NoteRow` with the menu, chip, editing, deletion and drag                                                  |
+| `src/components/PriorityMenu.tsx`                                                                            | Radix `DropdownMenu`. Replaced 129 lines of hand-rolled popover                                                  |
+| `src/components/{Header,Compose,Progress,DayGroupSection,DueChip,EditableText,EmptyState,SettingSwitch}.tsx` | The rest of the tree                                                                                             |
+| `src/hooks/useDragDrop.ts`                                                                                   | HTML5 drag events, drop markers, and the dragged-row ref                                                         |
+| `src/features/export.ts`                                                                                     | CSV export of the list. The only non-component feature                                                           |
+| `public/icons/`                                                                                              | Copied verbatim to the output root                                                                               |
 
 Both HTML entrypoints are a `<div id="root">` plus a `<script type="module">`
 pointing at a `.tsx` root, and Vite bundles each entrypoint with everything it
@@ -80,7 +79,7 @@ untouched under plain `node` — see Testing.
 - **`reducer.ts` is the single place state changes**, and it is pure: every case
   returns a new state, items array and item object where it changes one. A
   mutated-in-place item is a row that silently refuses to re-render. No-op
-  actions return the *same* state reference, which is how the view skips a save
+  actions return the _same_ state reference, which is how the view skips a save
   and a render.
 - **Every list row carries `key={item.id}`, never the index.** Four of the traps
   below dissolve only because that key is stable. With an index key a reorder
@@ -94,7 +93,7 @@ untouched under plain `node` — see Testing.
 - **Nothing renders during a drag.** The dragged index is a `useRef` and hover
   markers are applied with `classList`, so a `dragover` at 60fps causes zero
   renders. The budget is one render per drag, on the drop. Mutating `classList`
-  on nodes React owns is safe *only* because of that, and because every marker
+  on nodes React owns is safe _only_ because of that, and because every marker
   is cleared on drop before the render that follows.
 - **`utils.ts` must stay runnable in a service worker**, and so must
   `day_utils.ts`, which `utils.ts` imports for `normalizeState` and
@@ -141,7 +140,7 @@ untouched under plain `node` — see Testing.
   `chrome` into the pure layer.
 - **Persisting is explicit, never reactive.** `dispatch` saves for
   locally-originated actions and skips `REPLACE_STATE`. An effect that saved on
-  every state change would write back the state that just arrived *from*
+  every state change would write back the state that just arrived _from_
   storage, which -- with `background.ts` re-syncing the alarm on every write --
   is a feedback loop. The natural React translation is the wrong one.
 
@@ -151,11 +150,11 @@ State is `{ tasks, settings, memos }` -- three slices, each under its own
 `chrome.storage.local` key, with a `localStorage` fallback so the popup also
 runs from a plain page during testing:
 
-| Key | Holds |
-| --- | --- |
-| `tasks.v1` | `Task[]`, a bare array |
+| Key           | Holds                         |
+| ------------- | ----------------------------- |
+| `tasks.v1`    | `Task[]`, a bare array        |
 | `settings.v1` | `Settings`, including `theme` |
-| `memo.v1` | `Memo[]`, always `[]` so far |
+| `memo.v1`     | `Memo[]`, always `[]` so far  |
 
 There is **no migration from the pre-split layout**, deliberately. The old
 `checklist.v1` key held `{ items, theme, settings }`; nothing reads it any more,
@@ -175,7 +174,7 @@ the same reference. Never write a slice the reducer did not change.
 sit outside `settings` so that moving it would not reset the saved theme for
 every existing user; with no migration kept, that constraint is simply gone and
 theme lives where it belongs. `normalizeSettings()` always returns a
-*complete* object; never spread a partial saved value into live state, because a
+_complete_ object; never spread a partial saved value into live state, because a
 missing nested field reads as `undefined` exactly where it matters and fails
 silently.
 
@@ -205,13 +204,13 @@ as plain text and is exactly what `<input type="date">` reads and writes.
 `normalizeState()` is the single gate for anything read from storage — it takes
 `unknown`, validates, applies defaults, and is where a future migration goes. It
 does not backfill `updatedAt`; missing stamps render blank rather than claiming a
-date. It *does* clamp `priority` through `isPriority()`: a stored value outside
+date. It _does_ clamp `priority` through `isPriority()`: a stored value outside
 the three real levels would otherwise match no CSS rule and no menu entry.
 
 `DayKey` and `TimeOfDay` are plain aliases for `string`, deliberately not
 branded. A brand would force a cast at every `<input type="date">` read, which is
 most of the call sites, and the runtime guards already do the enforcing. One
-consequence is worth knowing: because `DayKey` *is* `string`, the type predicate
+consequence is worth knowing: because `DayKey` _is_ `string`, the type predicate
 `isDayKey(value): value is DayKey` narrows the **failing** branch of an
 already-`string` value to `never`. That is why `matchesDayKey()` exists
 separately — `parseDayInput` keeps using its input after a failed check.
@@ -267,14 +266,14 @@ callbacks, which stay inline but still take a block body.
   are all gone. **Do not reintroduce a handler on `.body`** -- it would bring the
   whole class of bug back with it.
 - **Single-click-to-toggle and double-click-to-edit cannot share a target.** A
-  double-click sends two `click` events *first*; each one re-renders, so the
+  double-click sends two `click` events _first_; each one re-renders, so the
   `dblclick` then fires on a node no longer in the document and the edit opens
   on an orphaned row — invisible, no error. This is why clicking a task's text
   does not tick it off.
 - **~~Never re-render during a drag.~~ Still true in effect, for a different
   reason.** The old hazard was that rebuilding the rows destroyed the node being
   dragged. React reconciles rather than rebuilding, so a render mid-drag no
-  longer aborts the gesture -- *given a stable key*. The rule survives as a
+  longer aborts the gesture -- _given a stable key_. The rule survives as a
   performance one: hover markers stay out of React state so a `dragover` causes
   no render at all.
 - **`dragover` must call `preventDefault()`** or `drop` never fires, and a drag
@@ -304,7 +303,7 @@ callbacks, which stay inline but still take a block body.
   hoisted, a test that installs a `chrome` stub in its own file body arrives too
   late: `loadState()` has already latched the `localStorage` path. Harmless in
   production, because a worker always has `chrome` — but it means a stub has to
-  be installed from a module that loads *before* `utils.ts`, not from the file
+  be installed from a module that loads _before_ `utils.ts`, not from the file
   doing the stubbing.
 - **Entrypoint files are imported by WXT at build time, in Node.** Anything
   touching `chrome` at the top level of `entrypoints/background.ts` breaks
@@ -317,7 +316,7 @@ callbacks, which stay inline but still take a block body.
   globals. It is off so that nothing in this codebase is an identifier you
   cannot grep for.
 - **React omits `data-x={false}` entirely.** `styles.css` matches on
-  `[data-done="false"]`, so every data attribute is rendered as a *string*:
+  `[data-done="false"]`, so every data attribute is rendered as a _string_:
   `data-done={String(item.done)}`. Passing the boolean drops the attribute and
   the rule silently stops matching.
 - **Radix portals its content outside the React root**, to `document.body`. Two
@@ -331,7 +330,7 @@ callbacks, which stay inline but still take a block body.
   reducer, which rejects the rest through `isTimeOfDay`.
 - **`else if` is not a guard clause.** A brace-normalising pass once rewrote
   `} else if (cond) { body }` into `} else { if (cond) {} body }`, which made the
-  editor's `settle(false)` run for *every* key except Enter -- typing one
+  editor's `settle(false)` run for _every_ key except Enter -- typing one
   character closed the editor and discarded the edit. The detector is an
   `if (...) {` immediately followed by `}`.
 
@@ -344,7 +343,7 @@ is the only automated gate; everything else is checked by loading
 **The sources no longer run under plain `node`.** They used to, which is why
 `erasableSyntaxOnly` is on and why imports carry explicit extensions. Two things
 ended it: components are `.tsx`, and Node's type-stripping does not do JSX; and
-house style uses one plain `import` form for values *and* types, which the
+house style uses one plain `import` form for values _and_ types, which the
 stripper cannot tell apart, so it leaves `import { DayKey }` in place and ESM
 linking fails with "does not provide an export named". `tsc` and Vite both elide
 those imports correctly, so only the no-build-step route is gone.
@@ -370,7 +369,7 @@ that `styles.css` depends on, with no DOM at all.
   row no longer shows.
 - A suspected IME interaction (Vietnamese Telex) may produce a duplicate `Enter`
   keydown when adding items. Guard is `if (event.key === "Enter" &&
-  !event.isComposing)`; not applied, cause unconfirmed. `npm run dev` is the
+!event.isComposing)`; not applied, cause unconfirmed. `npm run dev` is the
   first time this codebase has had fast iteration against a real browser
   profile, which is where confirming it became cheap.
 - `typescript` is pinned to `^5.9.3`, the version WXT 0.21.4 ships against. TS 7
