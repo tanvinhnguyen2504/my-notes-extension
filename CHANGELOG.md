@@ -1,14 +1,20 @@
 # 2026-10-12
 
-- chore: adopt the @/ alias across src/
-- refactor(popup): rename "Header" to "TaskHeader" and add "TasksPage" component
-- fix(popup): bug cannot resize to adjust width
-- feat(styles): add overflow for list of tasks
-- feat(popup): replace settings panel out of the header by settings detail component
-- feat(popup-width): drag-to-resize the wide width
-- feat(compose): style for compose focus ring on the footer
-- fix(styles): cascade layers + #root flex column
-- fix(styles): bug cannot apply css
+- [#PR7](https://github.com/tanvinhnguyen2504/my-notes-extension/pull/7)
+  - docs(claude): add comment rule, memo.md, plans to "CLAUDE.md " file
+  - style(memos): make vibrant color for memo row, tab
+  - feat(memos): add memos feature
+
+- [main](https://github.com/tanvinhnguyen2504/my-notes-extension)
+  - chore: adopt the @/ alias across src/
+  - refactor(popup): rename "Header" to "TaskHeader" and add "TasksPage" component
+  - fix(popup): bug cannot resize to adjust width
+  - feat(styles): add overflow for list of tasks
+  - feat(popup): replace settings panel out of the header by settings detail component
+  - feat(popup-width): drag-to-resize the wide width
+  - feat(compose): style for compose focus ring on the footer
+  - fix(styles): cascade layers + #root flex column
+  - fix(styles): bug cannot apply css
 
 # 2026-10-09
 
