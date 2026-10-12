@@ -1,41 +1,30 @@
-// The popup. Owns the reducer, the storage subscription, and the view state
-// that must never be persisted (which row is editing, whether settings is open).
-
+import * as Tabs from '@radix-ui/react-tabs';
 import { useEffect, useReducer, useRef, useState } from 'react';
-import { Action, reducer } from '../core/reducer.ts';
-import { DayKey } from '../core/types.ts';
-import { downloadCsv } from '../features/export.ts';
-import { useDragDrop } from '../hooks/useDragDrop.ts';
-import { useWidthDrag } from '../hooks/useWidthDrag.ts';
-import { groupByDay } from '../core/day_utils.ts';
-import { WIDE_WIDTH_PROPERTY, WIDTH, clampWideWidth, progressPercent } from '../core/utils.ts';
-import { SETTINGS_KEY, normalizeSettings } from '../storages/settings.ts';
-import { emptyState, loadState, persistChanged } from '../storages/state.ts';
-import { TASKS_KEY, normalizeTasks } from '../storages/tasks.ts';
-import { Compose } from './Compose.tsx';
-import { DayGroupSection } from './DayGroupSection.tsx';
-import { EmptyState } from './EmptyState.tsx';
-import { Header } from './Header.tsx';
-import { PopupRow } from './PopupRow.tsx';
-import { Progress } from './Progress.tsx';
-import { WidthGrip } from './WidthGrip.tsx';
-import { SettingDetailsPanel } from './SettingDetailsPanel.tsx';
+import { Action, reducer } from '@/src/core/reducer';
+import { MEMOS_KEY, normalizeMemos } from '@/src/storages/memo';
+import { SETTINGS_KEY, normalizeSettings } from '@/src/storages/settings';
+import { emptyState, loadState, persistChanged } from '@/src/storages/state';
+import { WIDE_WIDTH_PROPERTY, WIDTH, clampWideWidth } from '@/src/core/utils';
+import { useWidthDrag } from '@/src/hooks/useWidthDrag';
+import { TASKS_KEY, normalizeTasks } from '@/src/storages/tasks';
+import { MemosPage } from './MemoPage';
+import { SettingDetailsPanel } from './SettingDetailsPanel';
+import { CHIP_HOVER, CHIP_ICON } from './TaskHeader';
+import { WidthGrip } from './WidthGrip';
+import { Tab } from './Tab';
+import { TasksPage } from './TasksPage';
+
+// Radix unmounts the inactive panel, which is fine: no page owns storage.
+const PANEL = 'flex-1 min-h-0 flex flex-col';
 
 export function PopupPage(): React.JSX.Element {
   const [state, rawDispatch] = useReducer(reducer, null, () => {
     return emptyState();
   });
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // The reducer is pure, so `dispatch` can compute what to persist rather than
-  // waiting for the next render. Persisting stays explicit rather than
-  // reactive: REPLACE_STATE carries state that just arrived FROM storage, and
-  // an effect saving on every change would write it straight back -- which,
-  // with background.ts re-syncing the alarm on every write, is a loop.
-  //
-  // Returns whether anything changed, because a no-op returns the same state
-  // and some callers need to know (an add that parsed to nothing, say).
+  // Persisting is explicit, not reactive: an effect saving on every change would
+  // write back what just arrived FROM storage, which is a loop. Returns whether
+  // anything changed, because a no-op returns the same state.
   const stateRef = useRef(state);
   stateRef.current = state;
 
@@ -48,7 +37,6 @@ export function PopupPage(): React.JSX.Element {
     stateRef.current = next;
     rawDispatch(action);
     if (action.type !== 'REPLACE_STATE') {
-      // Only changed slices: a settings toggle no longer rewrites `tasks`.
       persistChanged(current, next);
     }
     return true;
@@ -58,12 +46,9 @@ export function PopupPage(): React.JSX.Element {
     loadState().then((saved) => {
       dispatch({ type: 'REPLACE_STATE', state: saved });
     });
-    // Deliberately once, on mount.
   }, []);
 
-  // The reminder window writes the tasks key. Without this, a tick there is
-  // undone by the popup's next save. Replacing only the arrived slice keeps the
-  // other references intact, so persistChanged stays accurate.
+  // Without this the popup's next save writes stale items over a reminder-window tick.
   useEffect(() => {
     if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.onChanged) {
       return;
@@ -75,16 +60,17 @@ export function PopupPage(): React.JSX.Element {
       const current = stateRef.current;
       const tasksChange = changes[TASKS_KEY];
       const settingsChange = changes[SETTINGS_KEY];
-      if (!tasksChange && !settingsChange) {
+      const memosChange = changes[MEMOS_KEY];
+      if (!tasksChange && !settingsChange && !memosChange) {
         return;
       }
       const incoming = {
         ...current,
         tasks: tasksChange ? normalizeTasks(tasksChange.newValue) : current.tasks,
         settings: settingsChange ? normalizeSettings(settingsChange.newValue) : current.settings,
+        memos: memosChange ? normalizeMemos(memosChange.newValue) : current.memos,
       };
-      // Fires for this popup's own writes too, and re-rendering would destroy
-      // an open editor for nothing.
+      // Fires for this popup's own writes too; re-rendering would destroy an open editor.
       if (JSON.stringify(incoming) === JSON.stringify(current)) {
         return;
       }
@@ -96,13 +82,14 @@ export function PopupPage(): React.JSX.Element {
     };
   }, []);
 
-  // Both appearance preferences are attributes on <html>, outside the React
-  // root -- a contract with styles.css.
+  // On <html>, not a wrapper: Radix portals menus to document.body.
   useEffect(() => {
     document.documentElement.dataset.theme = state.settings.theme;
     document.documentElement.dataset.width = state.settings.width;
     document.documentElement.style.setProperty(WIDE_WIDTH_PROPERTY, `${state.settings.wideWidth}px`);
   }, [state.settings.theme, state.settings.width, state.settings.wideWidth]);
+
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const gripHandlers = useWidthDrag({
     width: state.settings.wideWidth,
@@ -112,115 +99,71 @@ export function PopupPage(): React.JSX.Element {
     },
   });
 
-  const { rowProps, groupProps } = useDragDrop({
-    onRowDrop: ({ from, to, dayKey }) => {
-      dispatch({ type: 'SET_DAY', index: from, dayKey });
-      dispatch({ type: 'MOVE_ITEM', from, to });
-    },
-    onGroupDrop: ({ from, dayKey }) => {
-      dispatch({ type: 'SET_DAY', index: from, dayKey });
-    },
-  });
-
-  const groups = groupByDay(state.tasks);
-
   const isWide = state.settings.width === WIDTH.WIDE;
+
+  const isTasksMode = state.settings.mode === 'tasks';
 
   return (
     <>
       {isWide ? <WidthGrip side="left" handlers={gripHandlers('left')} /> : null}
       {isWide ? <WidthGrip side="right" handlers={gripHandlers('right')} /> : null}
 
-      <Header
-        state={state}
-        isSettingsOpen={settingsOpen}
-        onMarkAll={() => {
-          dispatch({ type: 'MARK_ALL' });
+      <Tabs.Root
+        className="flex-1 min-h-0 flex flex-col"
+        value={state.settings.mode}
+        onValueChange={(value) => {
+          if (value !== 'tasks' && value !== 'memos') {
+            return;
+          }
+          dispatch({ type: 'SET_MODE', mode: value });
         }}
-        onClearAll={() => {
-          dispatch({ type: 'CLEAR_ALL' });
-        }}
-        onExport={() => {
-          downloadCsv(state.tasks);
-        }}
-        onSwitchSettingDetails={setSettingsOpen}
-      />
+      >
+        <div className="flex items-center gap-[10px] px-[16px] pt-[12px] pb-[10px] bg-surface">
+          <Tab />
+          <button
+            id="btn-settings"
+            className={`${CHIP_ICON} ${CHIP_HOVER}`}
+            type="button"
+            title="Settings"
+            aria-label="Settings"
+            aria-expanded={settingsOpen}
+            aria-controls="settings-panel"
+            onClick={() => {
+              setSettingsOpen(!settingsOpen);
+            }}
+          >
+            ⚙
+          </button>
+        </div>
 
-      <Progress percent={progressPercent(state.tasks)} />
+        {settingsOpen ? (
+          <SettingDetailsPanel
+            state={state}
+            onToggleTheme={() => {
+              dispatch({ type: 'SET_THEME' });
+            }}
+            onToggleWidth={() => {
+              dispatch({ type: 'SET_WIDTH' });
+            }}
+            onToggleReminder={() => {
+              dispatch({ type: 'SET_REMINDER_ENABLED' });
+            }}
+            onPickReminderTime={(time) => {
+              dispatch({ type: 'SET_REMINDER_TIME', time });
+            }}
+          />
+        ) : null}
 
-      {settingsOpen ? (
-        <SettingDetailsPanel
-          state={state}
-          onToggleTheme={() => {
-            dispatch({ type: 'SET_THEME' });
-          }}
-          onToggleWidth={() => {
-            dispatch({ type: 'SET_WIDTH' });
-          }}
-          onToggleReminder={() => {
-            dispatch({ type: 'SET_REMINDER_ENABLED' });
-          }}
-          onPickReminderTime={(time) => {
-            dispatch({ type: 'SET_REMINDER_TIME', time });
-          }}
-        />
-      ) : null}
-
-      <main id="list" className="flex-1 min-h-0 overflow-y-auto overscroll-contain py-[4px]">
-        {state.tasks.length === 0 ? (
-          <EmptyState />
+        {isTasksMode ? (
+          <Tabs.Content className={PANEL} value="tasks">
+            <TasksPage state={state} dispatch={dispatch} />
+          </Tabs.Content>
         ) : (
-          <div className="overflow">
-            {groups.map((group) => {
-              const dayKey: DayKey | null = group.key || null;
-              return (
-                <DayGroupSection key={group.key} group={group} headProps={groupProps(dayKey)}>
-                  {group.entries.map(({ item, index }) => {
-                    return (
-                      <PopupRow
-                        key={item.id}
-                        item={item}
-                        index={index}
-                        dayKey={dayKey}
-                        editing={editingId === item.id}
-                        onStartEditing={() => {
-                          setEditingId(item.id);
-                        }}
-                        onStopEditing={() => {
-                          setEditingId(null);
-                        }}
-                        onToggle={() => {
-                          dispatch({ type: 'TOGGLE_DONE', index });
-                        }}
-                        onDelete={() => {
-                          dispatch({ type: 'DELETE_ITEM', index });
-                        }}
-                        onRename={(text) => {
-                          dispatch({ type: 'RENAME_ITEM', index, text });
-                        }}
-                        onSetPriority={(priority) => {
-                          dispatch({ type: 'SET_PRIORITY', index, priority });
-                        }}
-                        onSetDay={(key) => {
-                          dispatch({ type: 'SET_DAY', index, dayKey: key });
-                        }}
-                        dragHandlers={rowProps(index, dayKey)}
-                      />
-                    );
-                  })}
-                </DayGroupSection>
-              );
-            })}
-          </div>
+          <Tabs.Content className={PANEL} value="memos">
+            <MemosPage state={state} dispatch={dispatch} />
+          </Tabs.Content>
         )}
-      </main>
-
-      <Compose
-        autoFocus
-        onAdd={(text) => {
-          return dispatch({ type: 'ADD_ITEM', text });
-        }}
-      />
+      </Tabs.Root>
     </>
   );
 }

@@ -1,8 +1,6 @@
-// The settings slice, now including `theme`.
-
-import { Settings, Theme } from '../core/types.ts';
-import { DEFAULT_SETTINGS, THEME, WIDTH, clampWideWidth, isRecord, isTimeOfDay, preferredTheme } from '../core/utils.ts';
-import { readDataByKeyFromStorage, writeKey } from './local.ts';
+import { Settings, Theme } from '@/src/core/types';
+import { DEFAULT_SETTINGS, THEME, WIDTH, clampWideWidth, isRecord, isTimeOfDay, preferredTheme } from '@/src/core/utils';
+import { readDataByKeyFromStorage, writeKey } from './local';
 
 export const SETTINGS_KEY = 'settings.v1';
 
@@ -23,6 +21,7 @@ export function normalizeSettings(saved: unknown): Settings {
     theme: savedTheme(source.theme),
     width: source.width === WIDTH.WIDE ? WIDTH.WIDE : WIDTH.COMPACT,
     wideWidth: clampWideWidth(source.wideWidth),
+    mode: source.mode === 'memos' ? 'memos' : 'tasks',
     reminder: {
       enabled: !!reminder.enabled,
       time: isTimeOfDay(reminder.time) ? reminder.time : DEFAULT_SETTINGS.reminder.time,
