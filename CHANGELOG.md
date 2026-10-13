@@ -1,3 +1,8 @@
+# 2026-10-13
+
+- [#PR8](https://github.com/tanvinhnguyen2504/my-notes-extension/pull/8)
+  - feat(memo): enchance UX pinned/copy for memo item
+
 # 2026-10-12
 
 - [#PR7](https://github.com/tanvinhnguyen2504/my-notes-extension/pull/7)
