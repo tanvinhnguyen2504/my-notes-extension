@@ -1,5 +1,6 @@
 # 2026-10-23
 
+- feat(popup): improve UI/UX
 - fix(popup): bug cannot scroll when height expanding
 
 # 2026-10-13
