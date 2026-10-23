@@ -1,3 +1,7 @@
+# 2026-10-23
+
+- fix(popup): bug cannot scroll when height expanding
+
 # 2026-10-13
 
 - [#PR8](https://github.com/tanvinhnguyen2504/my-notes-extension/pull/8)
