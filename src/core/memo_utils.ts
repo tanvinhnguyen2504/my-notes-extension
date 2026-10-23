@@ -90,3 +90,89 @@ export function splitPinned(memos: IMemo[]): { pinned: IMemo[]; recent: IMemo[] 
 export function firstLine(content: string): string {
   return content.split('\n')[0] ?? '';
 }
+
+export type MemoTokenKind = 'cmd' | 'text' | 'str' | 'flag' | 'kw' | 'pipe' | 'comment';
+
+export interface IMemoToken {
+  text: string;
+  kind: MemoTokenKind;
+}
+
+const SQL_KEYWORDS: ReadonlySet<string> = new Set([
+  'select', 'from', 'where', 'and', 'or', 'order', 'by', 'group', 'limit',
+  'insert', 'into', 'update', 'set', 'delete', 'join', 'left', 'right',
+  'on', 'as', 'desc', 'asc',
+]);
+
+// One pass, alternation ordered by greediness: a quoted run wins over the
+// pipe inside it, and the pipe wins over the bare-word rule. An unterminated
+// quote falls through to the word branch rather than swallowing the line.
+const PIECE_PATTERN = /('[^']*'|"[^"]*"|`[^`]*`)|(\s\|\s)|(\s+)|(\S+)/g;
+
+function isFlag(piece: string): boolean {
+  return /^--?[A-Za-z][\w-]*(=.*)?$/.test(piece);
+}
+
+export function tokenizeMemoLine(line: string, type: EMemoType): IMemoToken[] {
+  if (line === '') {
+    return [];
+  }
+  if (type === EMemoType.NOTE && line.trimStart().startsWith('#')) {
+    return [{ text: line, kind: 'comment' }];
+  }
+
+  const commandLed = type === EMemoType.GIT || type === EMemoType.SHELL;
+  const tokens: IMemoToken[] = [];
+  let seenWord = false;
+
+  for (const match of line.matchAll(PIECE_PATTERN)) {
+    const [piece, quoted, pipe, space] = match;
+
+    if (quoted !== undefined) {
+      tokens.push({ text: piece, kind: 'str' });
+      seenWord = true;
+      continue;
+    }
+    if (pipe !== undefined) {
+      tokens.push({ text: piece, kind: 'pipe' });
+      continue;
+    }
+    if (space !== undefined) {
+      tokens.push({ text: piece, kind: 'text' });
+      continue;
+    }
+    if (isFlag(piece)) {
+      tokens.push({ text: piece, kind: 'flag' });
+      seenWord = true;
+      continue;
+    }
+    if (commandLed && !seenWord) {
+      tokens.push({ text: piece, kind: 'cmd' });
+      seenWord = true;
+      continue;
+    }
+    if (type === EMemoType.DATABASE && SQL_KEYWORDS.has(piece.toLowerCase())) {
+      tokens.push({ text: piece, kind: 'kw' });
+      seenWord = true;
+      continue;
+    }
+    tokens.push({ text: piece, kind: 'text' });
+    seenWord = true;
+  }
+
+  return tokens;
+}
+
+export function countMemosByType(memos: IMemo[]): Record<EMemoType, number> {
+  const counts: Record<EMemoType, number> = {
+    [EMemoType.GIT]: 0,
+    [EMemoType.DATABASE]: 0,
+    [EMemoType.SHELL]: 0,
+    [EMemoType.CONFIG]: 0,
+    [EMemoType.NOTE]: 0,
+  };
+  memos.forEach((memo) => {
+    counts[memo.type] += 1;
+  });
+  return counts;
+}

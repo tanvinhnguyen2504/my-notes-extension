@@ -118,7 +118,7 @@ export function PopupPage(): React.JSX.Element {
           dispatch({ type: 'SET_MODE', mode: value });
         }}
       >
-        <div className="flex items-center gap-[10px] px-[16px] pt-[12px] pb-[10px] bg-surface">
+        <div className="sticky top-0 z-10 flex items-center gap-[10px] px-[16px] pt-[12px] pb-[10px] bg-surface">
           <Tab />
           <button
             id="btn-settings"

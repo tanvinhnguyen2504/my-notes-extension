@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { filterMemos, newMemo, splitPinned } from '@/src/core/memo_utils';
+import { countMemosByType, filterMemos, newMemo, splitPinned } from '@/src/core/memo_utils';
 import { Action } from '@/src/core/reducer';
 import { State } from '@/src/core/types';
 import { EMemoType, IMemo } from '@/src/core/types/memos';
@@ -7,6 +7,7 @@ import { MemoEditor } from './memos/MemoEditor';
 import { MemoEmptyState } from './memos/MemoEmptyState';
 import { MemoFilterChips } from './memos/MemoFilterChips';
 import { MemoGroup } from './memos/MemoGroup';
+import { MemoHints } from './memos/MemoHints';
 import { MemoRow } from './memos/MemoRow';
 import { MemoSearch } from './memos/MemoSearch';
 
@@ -25,6 +26,9 @@ export function MemosPage({ state, dispatch }: MemosPageProps): React.JSX.Elemen
   const [draft, setDraft] = useState<IMemo | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
 
+  // Counts come from state.memos, never from `matched`, so they stay put while
+  // the user types -- but still follow a pin, an add or a delete.
+  const counts = countMemosByType(state.memos);
   const matched = filterMemos(state.memos, activeType, query);
   const { pinned, recent } = splitPinned(matched);
   const visible = [...pinned, ...recent];
@@ -180,8 +184,8 @@ export function MemosPage({ state, dispatch }: MemosPageProps): React.JSX.Elemen
 
   return (
     <>
-      <div className="flex-none flex items-center gap-[8px] px-[12px] pb-[10px]">
-        <MemoFilterChips active={activeType} onChange={setActiveType} />
+      <div className="group flex-none flex items-center gap-[8px] px-[12px] pb-[10px]">
+        <MemoFilterChips active={activeType} counts={counts} total={state.memos.length} onChange={setActiveType} />
         <button
           id="btn-new-memo"
           className="flex-none w-[28px] h-[28px] rounded-[8px] border border-line text-[15px] leading-none text-dim hover:text-ink hover:bg-chip"
@@ -211,7 +215,10 @@ export function MemosPage({ state, dispatch }: MemosPageProps): React.JSX.Elemen
         )}
       </main>
 
-      <MemoSearch value={query} inputRef={searchRef} onChange={setQuery} />
+      <section className="z-10 sticky bottom-0 w-full">
+        <MemoSearch value={query} inputRef={searchRef} onChange={setQuery} />
+        <MemoHints total={state.memos.length} />
+      </section>
     </>
   );
 }

@@ -1,3 +1,4 @@
+import { MemoTokenKind } from '@/src/core/memo_utils';
 import { EMemoType, MemoSubType } from '@/src/core/types/memos';
 import { EMemoSubTypeConfig, EMemoSubTypeDatabase, EMemoSubTypeGit, EMemoSubTypeNote, EMemoSubTypeShell } from '@/src/core/types/memos';
 
@@ -7,6 +8,28 @@ export const MEMO_TYPE_DOT: Record<EMemoType, string> = {
   [EMemoType.SHELL]: 'bg-type-shell',
   [EMemoType.CONFIG]: 'bg-type-config',
   [EMemoType.NOTE]: 'bg-type-note',
+};
+
+// The prompt glyph sits in the code well, before the body.
+export const MEMO_PROMPT_GLYPH: Record<EMemoType, string> = {
+  [EMemoType.GIT]: '$',
+  [EMemoType.DATABASE]: 'sql',
+  [EMemoType.SHELL]: '$',
+  [EMemoType.CONFIG]: '$',
+  [EMemoType.NOTE]: '\u00b7',
+};
+
+// Theme-invariant on purpose -- the well is dark in both themes, so these
+// never take a --color-dim style token. `comment` is the one exception and
+// uses the well's own ghost colour rather than the page's.
+export const MEMO_TOKEN_CLASS: Record<MemoTokenKind, string> = {
+  cmd: 'text-sx-cmd',
+  text: 'text-sx-text',
+  str: 'text-sx-str',
+  flag: 'text-sx-flag',
+  kw: 'text-sx-kw',
+  pipe: 'text-sx-pipe',
+  comment: 'text-code-ghost',
 };
 
 export const MEMO_SUBTYPE_LABELS: Record<MemoSubType, string> = {

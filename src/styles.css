@@ -58,6 +58,18 @@
   /* Dark in BOTH themes: a snippet reads as a terminal. */
   --color-code-bg: #17161a;
   --color-code-ink: #eae7e1;
+  /* The well is dark in BOTH themes, so its border, its prompt glyph and every
+     syntax colour are theme-invariant: they are NOT redefined in the dark block.
+     Taking them from --color-hair / --color-dim instead would paint dark-on-dark
+     in light mode -- invisible, with no error anywhere. */
+  --color-code-line: rgba(255, 255, 255, 0.05);
+  --color-code-ghost: rgba(242, 240, 236, 0.3);
+  --color-sx-cmd: #f2f0ec;
+  --color-sx-text: rgba(242, 240, 236, 0.78);
+  --color-sx-str: oklch(0.84 0.09 80);
+  --color-sx-flag: oklch(0.78 0.08 250);
+  --color-sx-kw: oklch(0.78 0.09 250);
+  --color-sx-pipe: rgba(242, 240, 236, 0.38);
 
   /* Advisory, never blocking. */
   --color-warn-bg: oklch(0.95 0.05 85);
@@ -129,7 +141,12 @@ html[data-theme='dark'] {
   body {
     width: 380px;
     min-height: 520px;
-    /* max-height: 520px; */
+    /* The CEILING is what makes the layout work, not decoration. Without it
+       body grows to its content, `flex-1 min-h-0` on <main> has nothing to
+       push against, and past Chrome's 600px popup cap the VIEWPORT scrolls
+       the whole document -- taking the pinned chips, search and hints with
+       it. 600px is that cap. */
+    max-height: 600px;
     margin: 0;
     overflow: hidden;
     display: flex;
@@ -191,6 +208,9 @@ html[data-width='wide'] body {
 body.reminder {
   width: auto;
   height: 100vh;
+  /* The popup's 600px ceiling must not reach the reminder window, which is
+     sized by chrome.windows.create and fills whatever it is given. */
+  max-height: none;
 }
 body.reminder .row {
   cursor: default;

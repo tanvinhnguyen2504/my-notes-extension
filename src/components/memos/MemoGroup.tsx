@@ -11,7 +11,7 @@ export function MemoGroup({ label, count, children }: Props): React.JSX.Element 
   return (
     <section className="mb-[12px]">
       <div className="px-[2px] pb-[6px] text-[10px] font-mono tracking-[0.12em] text-dim">{label}</div>
-      <div className="rounded-[9px] border border-teal bg-surface overflow-hidden">{children}</div>
+      <div className="rounded-[9px] border border-line bg-surface overflow-hidden">{children}</div>
     </section>
   );
 }
