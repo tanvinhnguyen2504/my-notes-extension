@@ -49,8 +49,7 @@ export function TasksPage({ state, dispatch }: TasksPageProps): React.JSX.Elemen
 
       <Progress percent={progressPercent(state.tasks)} />
 
-
-      <main id="list" className="flex-1 min-h-0 overflow-y-auto overscroll-contain py-[4px]">
+      <main id="list" className="flex-1 min-h-0 overflow-y-auto py-[4px]">
         {state.tasks.length === 0 ? (
           <EmptyState />
         ) : (
