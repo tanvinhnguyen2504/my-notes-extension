@@ -4,6 +4,7 @@
 
 import { touchMemo } from './memo_utils';
 import { Task, Priority, PopupMode, State, TimeOfDay } from './types';
+import { EnglishItem } from './types/english';
 import { IMemo } from './types/memos';
 import { clampWideWidth, isAllDone, isTimeOfDay, moveItem, nextWidth, parseDraft, setAllDone, sortByPriority, switchTheme } from './utils';
 
@@ -28,6 +29,9 @@ export type Action =
   | { type: 'DELETE_MEMO'; id: string }
   | { type: 'TOGGLE_MEMO_PIN'; id: string }
   | { type: 'COUNT_MEMO_COPY'; id: string }
+  | { type: 'ADD_ENGLISH_ITEM'; item: EnglishItem }
+  | { type: 'DELETE_ENGLISH_ITEM'; id: string }
+  | { type: 'RESTORE_ENGLISH_ITEM'; item: EnglishItem }
   | { type: 'REPLACE_STATE'; state: State };
 
 function replaceItem(items: Task[], index: number, change: (item: Task) => Task): Task[] {
@@ -234,6 +238,33 @@ export function reducer(state: State, action: Action): State {
         return state;
       }
       return { ...state, memos };
+    }
+
+    case 'ADD_ENGLISH_ITEM': {
+      if (!action.item.en.trim()) {
+        return state;
+      }
+      return { ...state, english: [...state.english, action.item] };
+    }
+
+    case 'DELETE_ENGLISH_ITEM': {
+      const english = state.english.filter((item) => {
+        return item.id !== action.id;
+      });
+      if (english.length === state.english.length) {
+        return state;
+      }
+      return { ...state, english };
+    }
+
+    case 'RESTORE_ENGLISH_ITEM': {
+      const exists = state.english.some((item) => {
+        return item.id === action.item.id;
+      });
+      if (exists) {
+        return state;
+      }
+      return { ...state, english: [...state.english, action.item] };
     }
     case 'REPLACE_STATE': {
       return action.state;

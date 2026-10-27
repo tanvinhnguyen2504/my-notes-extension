@@ -1,19 +1,20 @@
 // Assembles the slices into one State, and writes back only what changed.
 
-import { State, Task } from '@/src/core/types';
+import { State } from '@/src/core/types';
+import { loadEnglish, saveEnglish } from './english';
 import { loadMemos, saveMemos } from './memo';
 import { loadSettings, normalizeSettings, saveSettings } from './settings';
 import { loadTasks, saveTasks } from './tasks';
 
 // First-frame placeholder, before loadState() resolves.
 export function emptyState(): State {
-  return { tasks: [], settings: normalizeSettings(null), memos: [] };
+  return { tasks: [], settings: normalizeSettings(null), memos: [], english: [] };
 }
 
 export async function loadState(): Promise<State> {
   // Independent keys, so these are genuinely parallel.
-  const [tasks, settings, memos] = await Promise.all([loadTasks(), loadSettings(), loadMemos()]);
-  return { tasks, settings, memos };
+  const [tasks, settings, memos, english] = await Promise.all([loadTasks(), loadSettings(), loadMemos(), loadEnglish()]);
+  return { tasks, settings, memos, english };
 }
 
 // The reducer returns a NEW reference for a slice it changed and the SAME one
@@ -28,5 +29,8 @@ export function persistChanged(previous: State, next: State): void {
   }
   if (next.memos !== previous.memos) {
     saveMemos(next.memos);
+  }
+  if (next.english !== previous.english) {
+    saveEnglish(next.english);
   }
 }

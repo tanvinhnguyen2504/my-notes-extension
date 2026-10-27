@@ -1,7 +1,7 @@
 import { Task } from '@/src/core/types';
 import { isDayKey } from '@/src/core/day_utils';
 import { PRIORITY, isPriority, isRecord, newId } from '@/src/core/utils';
-import { readDataByKeyFromStorage, writeKey } from './local';
+import { getDataFromStorageByKey, setDataToStorageByKey } from './local';
 
 export const TASKS_KEY = 'tasks.v1';
 
@@ -26,9 +26,9 @@ export function normalizeTasks(saved: unknown): Task[] {
 }
 
 export function loadTasks(): Promise<Task[]> {
-  return readDataByKeyFromStorage(TASKS_KEY, normalizeTasks);
+  return getDataFromStorageByKey(TASKS_KEY, normalizeTasks);
 }
 
 export function saveTasks(tasks: Task[]): void {
-  writeKey(TASKS_KEY, tasks);
+  setDataToStorageByKey(TASKS_KEY, tasks);
 }

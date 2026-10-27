@@ -1,3 +1,4 @@
+import { EnglishItem } from './types/english';
 import { IMemo } from './types/memos';
 import { PRIORITY, THEME, WIDTH } from './utils';
 
@@ -26,7 +27,7 @@ export interface ReminderSettings {
 }
 
 // A view preference, so it sits beside `theme` rather than taking a fourth key.
-export type PopupMode = 'tasks' | 'memos';
+export type PopupMode = 'tasks' | 'memos' | 'english';
 
 export interface Settings {
   theme: Theme;
@@ -40,4 +41,5 @@ export interface State {
   tasks: Task[];
   settings: Settings;
   memos: IMemo[];
+  english: EnglishItem[];
 }
