@@ -17,6 +17,9 @@ export function Tab(): React.JSX.Element {
           Dev
         </div>
       </Tabs.Trigger>
+      <Tabs.Trigger value="english" className={TRIGGER}>
+        <div className="text-center">English</div>
+      </Tabs.Trigger>
     </Tabs.List>
   );
 }

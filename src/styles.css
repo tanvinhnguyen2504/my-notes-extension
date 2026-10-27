@@ -75,6 +75,9 @@
   --color-warn-bg: oklch(0.95 0.05 85);
   --color-warn-ink: oklch(0.45 0.1 70);
 
+  --color-mark-bg: color-mix(in oklch, var(--color-teal) 18%, var(--color-surface));
+  --color-mark-fg: color-mix(in oklch, var(--color-teal) 75%, black);
+
   /* Reuses the clay hue CLEAR already speaks in, not a second red. */
   --color-danger-ink: var(--color-clay-ink);
 
@@ -125,6 +128,9 @@ html[data-theme='dark'] {
   --color-code-bg: #0f1013;
   --color-warn-bg: oklch(0.3 0.06 70);
   --color-warn-ink: oklch(0.88 0.08 80);
+  /* The spec's pair: light teal on dark teal. */
+  --color-mark-bg: #23382f;
+  --color-mark-fg: #8fdcc4;
   --color-danger-ink: var(--color-clay-ink);
 }
 

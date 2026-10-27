@@ -1,7 +1,7 @@
 import { firstSubType, isMemoSubTypeFor, isMemoType } from '@/src/core/memo_utils';
 import { EMemoType, IMemo } from '@/src/core/types/memos';
 import { isRecord, newId } from '@/src/core/utils';
-import { readDataByKeyFromStorage, writeKey } from './local';
+import { getDataFromStorageByKey, setDataToStorageByKey } from './local';
 
 export const MEMOS_KEY = 'memo.v1';
 
@@ -33,9 +33,9 @@ export function normalizeMemos(saved: unknown): IMemo[] {
 }
 
 export function loadMemos(): Promise<IMemo[]> {
-  return readDataByKeyFromStorage(MEMOS_KEY, normalizeMemos);
+  return getDataFromStorageByKey(MEMOS_KEY, normalizeMemos);
 }
 
 export function saveMemos(memos: IMemo[]): void {
-  writeKey(MEMOS_KEY, memos);
+  setDataToStorageByKey(MEMOS_KEY, memos);
 }

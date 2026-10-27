@@ -1,18 +1,21 @@
 import * as Tabs from '@radix-ui/react-tabs';
 import { useEffect, useReducer, useRef, useState } from 'react';
 import { Action, reducer } from '@/src/core/reducer';
+import { ENGLISH_KEY, normalizeEnglish } from '@/src/storages/english';
 import { MEMOS_KEY, normalizeMemos } from '@/src/storages/memo';
 import { SETTINGS_KEY, normalizeSettings } from '@/src/storages/settings';
 import { emptyState, loadState, persistChanged } from '@/src/storages/state';
 import { WIDE_WIDTH_PROPERTY, WIDTH, clampWideWidth } from '@/src/core/utils';
 import { useWidthDrag } from '@/src/hooks/useWidthDrag';
 import { TASKS_KEY, normalizeTasks } from '@/src/storages/tasks';
+import { EnglishPage } from './EnglishPage';
 import { MemosPage } from './MemoPage';
 import { SettingDetailsPanel } from './SettingDetailsPanel';
 import { CHIP_HOVER, CHIP_ICON } from './TaskHeader';
 import { WidthGrip } from './WidthGrip';
 import { Tab } from './Tab';
 import { TasksPage } from './TasksPage';
+import { PopupMode } from '../core/types';
 
 // Radix unmounts the inactive panel, which is fine: no page owns storage.
 const PANEL = 'flex-1 min-h-0 flex flex-col';
@@ -22,9 +25,6 @@ export function PopupPage(): React.JSX.Element {
     return emptyState();
   });
 
-  // Persisting is explicit, not reactive: an effect saving on every change would
-  // write back what just arrived FROM storage, which is a loop. Returns whether
-  // anything changed, because a no-op returns the same state.
   const stateRef = useRef(state);
   stateRef.current = state;
 
@@ -48,7 +48,6 @@ export function PopupPage(): React.JSX.Element {
     });
   }, []);
 
-  // Without this the popup's next save writes stale items over a reminder-window tick.
   useEffect(() => {
     if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.onChanged) {
       return;
@@ -61,7 +60,8 @@ export function PopupPage(): React.JSX.Element {
       const tasksChange = changes[TASKS_KEY];
       const settingsChange = changes[SETTINGS_KEY];
       const memosChange = changes[MEMOS_KEY];
-      if (!tasksChange && !settingsChange && !memosChange) {
+      const englishChange = changes[ENGLISH_KEY];
+      if (!tasksChange && !settingsChange && !memosChange && !englishChange) {
         return;
       }
       const incoming = {
@@ -69,8 +69,8 @@ export function PopupPage(): React.JSX.Element {
         tasks: tasksChange ? normalizeTasks(tasksChange.newValue) : current.tasks,
         settings: settingsChange ? normalizeSettings(settingsChange.newValue) : current.settings,
         memos: memosChange ? normalizeMemos(memosChange.newValue) : current.memos,
+        english: englishChange ? normalizeEnglish(englishChange.newValue) : current.english,
       };
-      // Fires for this popup's own writes too; re-rendering would destroy an open editor.
       if (JSON.stringify(incoming) === JSON.stringify(current)) {
         return;
       }
@@ -101,7 +101,9 @@ export function PopupPage(): React.JSX.Element {
 
   const isWide = state.settings.width === WIDTH.WIDE;
 
-  const isTasksMode = state.settings.mode === 'tasks';
+  const isInvalidTab = (value: PopupMode): boolean => {
+    return value !== 'tasks' && value !== 'memos' && value !== 'english';
+  };
 
   return (
     <>
@@ -111,11 +113,11 @@ export function PopupPage(): React.JSX.Element {
       <Tabs.Root
         className="flex-1 min-h-0 flex flex-col"
         value={state.settings.mode}
-        onValueChange={(value) => {
-          if (value !== 'tasks' && value !== 'memos') {
+        onValueChange={(value: string) => {
+          if (isInvalidTab(value as PopupMode)) {
             return;
           }
-          dispatch({ type: 'SET_MODE', mode: value });
+          dispatch({ type: 'SET_MODE', mode: value as PopupMode });
         }}
       >
         <div className="sticky top-0 z-10 flex items-center gap-[10px] px-[16px] pt-[12px] pb-[10px] bg-surface">
@@ -153,16 +155,21 @@ export function PopupPage(): React.JSX.Element {
             }}
           />
         ) : null}
-
-        {isTasksMode ? (
+        {state.settings.mode === 'tasks' ? (
           <Tabs.Content className={PANEL} value="tasks">
             <TasksPage state={state} dispatch={dispatch} />
           </Tabs.Content>
-        ) : (
+        ) : null}
+        {state.settings.mode === 'memos' ? (
           <Tabs.Content className={PANEL} value="memos">
             <MemosPage state={state} dispatch={dispatch} />
           </Tabs.Content>
-        )}
+        ) : null}
+        {state.settings.mode === 'english' ? (
+          <Tabs.Content className={PANEL} value="english">
+            <EnglishPage state={state} dispatch={dispatch} />
+          </Tabs.Content>
+        ) : null}
       </Tabs.Root>
     </>
   );
