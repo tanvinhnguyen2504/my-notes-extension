@@ -1,3 +1,8 @@
+# 20260-10-27
+
+- [#PR8](https://github.com/tanvinhnguyen2504/my-notes-extension/pull/8)
+  - feat(english-memo): add logic note english vocabulary/sentences
+
 # 2026-10-23
 
 - feat(popup): improve UI/UX
