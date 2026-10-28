@@ -9,6 +9,7 @@ import { WIDE_WIDTH_PROPERTY, WIDTH, clampWideWidth } from '@/src/core/utils';
 import { useWidthDrag } from '@/src/hooks/useWidthDrag';
 import { TASKS_KEY, normalizeTasks } from '@/src/storages/tasks';
 import { EnglishPage } from './EnglishPage';
+import { HintMode, HintToast } from './HintToast';
 import { MemosPage } from './MemoPage';
 import { SettingDetailsPanel } from './SettingDetailsPanel';
 import { CHIP_HOVER, CHIP_ICON } from './TaskHeader';
@@ -19,6 +20,8 @@ import { PopupMode } from '../core/types';
 
 // Radix unmounts the inactive panel, which is fine: no page owns storage.
 const PANEL = 'flex-1 min-h-0 flex flex-col';
+
+const HINT_MS = 8000;
 
 export function PopupPage(): React.JSX.Element {
   const [state, rawDispatch] = useReducer(reducer, null, () => {
@@ -90,6 +93,23 @@ export function PopupPage(): React.JSX.Element {
   }, [state.settings.theme, state.settings.width, state.settings.wideWidth]);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [hintOpen, setHintOpen] = useState(false);
+
+  useEffect(() => {
+    setHintOpen(false);
+  }, [state.settings.mode]);
+
+  useEffect(() => {
+    if (!hintOpen) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      setHintOpen(false);
+    }, HINT_MS);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [hintOpen]);
 
   const gripHandlers = useWidthDrag({
     width: state.settings.wideWidth,
@@ -100,6 +120,7 @@ export function PopupPage(): React.JSX.Element {
   });
 
   const isWide = state.settings.width === WIDTH.WIDE;
+  const hintMode = state.settings.mode === 'tasks' ? null : (state.settings.mode satisfies HintMode);
 
   const isInvalidTab = (value: PopupMode): boolean => {
     return value !== 'tasks' && value !== 'memos' && value !== 'english';
@@ -111,7 +132,7 @@ export function PopupPage(): React.JSX.Element {
       {isWide ? <WidthGrip side="right" handlers={gripHandlers('right')} /> : null}
 
       <Tabs.Root
-        className="flex-1 min-h-0 flex flex-col"
+        className="relative flex-1 min-h-0 flex flex-col"
         value={state.settings.mode}
         onValueChange={(value: string) => {
           if (isInvalidTab(value as PopupMode)) {
@@ -122,6 +143,22 @@ export function PopupPage(): React.JSX.Element {
       >
         <div className="sticky top-0 z-10 flex items-center gap-[10px] px-[16px] pt-[12px] pb-[10px] bg-surface">
           <Tab />
+          {hintMode ? (
+            <button
+              id="btn-hint"
+              className={`${CHIP_ICON} ${CHIP_HOVER}`}
+              type="button"
+              title="How to use this tab"
+              aria-label="How to use this tab"
+              aria-expanded={hintOpen}
+              aria-controls="hint-toast"
+              onClick={() => {
+                setHintOpen(!hintOpen);
+              }}
+            >
+              ?
+            </button>
+          ) : null}
           <button
             id="btn-settings"
             className={`${CHIP_ICON} ${CHIP_HOVER}`}
@@ -137,6 +174,15 @@ export function PopupPage(): React.JSX.Element {
             ⚙
           </button>
         </div>
+
+        {hintOpen && hintMode ? (
+          <HintToast
+            mode={hintMode}
+            onClose={() => {
+              setHintOpen(false);
+            }}
+          />
+        ) : null}
 
         {settingsOpen ? (
           <SettingDetailsPanel

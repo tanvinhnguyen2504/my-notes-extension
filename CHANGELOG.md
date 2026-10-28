@@ -1,5 +1,6 @@
 # 2026-10-28
 
+- feat(popup): add custom hook useMemoKeyboard and add the hint toast
 - style(english-memo): update color `text-tear` for hint
 
 # 2026-10-27

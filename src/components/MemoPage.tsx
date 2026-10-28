@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useMemoKeyboard } from '@/src/hooks/useMemoKeyboard';
 import { countMemosByType, filterMemos, newMemo, splitPinned } from '@/src/core/memo_utils';
 import { Action } from '@/src/core/reducer';
 import { State } from '@/src/core/types';
@@ -32,11 +33,6 @@ export function MemosPage({ state, dispatch }: MemosPageProps): React.JSX.Elemen
   const matched = filterMemos(state.memos, activeType, query);
   const { pinned, recent } = splitPinned(matched);
   const visible = [...pinned, ...recent];
-
-  const visibleRef = useRef(visible);
-  visibleRef.current = visible;
-  const focusedRef = useRef(focusedId);
-  focusedRef.current = focusedId;
 
   const closeEditor = useCallback(() => {
     setDraft(null);
@@ -78,71 +74,20 @@ export function MemosPage({ state, dispatch }: MemosPageProps): React.JSX.Elemen
     };
   }, [copiedId]);
 
-  useEffect(() => {
-    if (draft) {
-      return;
-    }
-    const onKeyDown = (event: KeyboardEvent): void => {
-      const target = event.target as HTMLElement | null;
-      const typing = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA';
-
-      if (event.key === 'Escape') {
-        setQuery('');
-        searchRef.current?.blur();
-        return;
-      }
-      if (event.key === '/' && !typing) {
-        event.preventDefault();
-        searchRef.current?.focus();
-        return;
-      }
-      if (typing && event.key !== 'ArrowDown' && event.key !== 'ArrowUp') {
-        return;
-      }
-
-      const rows = visibleRef.current;
-      if (rows.length === 0) {
-        return;
-      }
-      const at = rows.findIndex((memo) => {
-        return memo.id === focusedRef.current;
-      });
-
-      if (event.key === 'ArrowDown') {
-        event.preventDefault();
-        const next = rows[Math.min(at + 1, rows.length - 1)];
-        setFocusedId(next ? next.id : null);
-        return;
-      }
-      if (event.key === 'ArrowUp') {
-        event.preventDefault();
-        const next = rows[Math.max(at - 1, 0)];
-        setFocusedId(next ? next.id : null);
-        return;
-      }
-      if (event.key === 'Enter' && at >= 0) {
-        const memo = rows[at];
-        if (memo) {
-          copy(memo);
-        }
-        return;
-      }
-      if ((event.key === 'n' || event.key === 'N') && !typing) {
-        setDraft(newMemo(EMemoType.GIT));
-        return;
-      }
-      if ((event.key === 'e' || event.key === 'E') && !typing && at >= 0) {
-        const memo = rows[at];
-        if (memo) {
-          setDraft(memo);
-        }
-      }
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [draft, copy]);
+  useMemoKeyboard({
+    enabled: draft === null,
+    searchRef,
+    query,
+    onQueryChange: setQuery,
+    rows: visible,
+    focusedId,
+    onFocusChange: setFocusedId,
+    onEnter: copy,
+    onNew: () => {
+      setDraft(newMemo(EMemoType.GIT));
+    },
+    onEdit: setDraft,
+  });
 
   if (draft) {
     const isExist = state.memos.some((saved) => {
@@ -217,7 +162,6 @@ export function MemosPage({ state, dispatch }: MemosPageProps): React.JSX.Elemen
 
       <section className="z-10 sticky bottom-0 w-full">
         <MemoSearch value={query} inputRef={searchRef} onChange={setQuery} />
-        <MemoHints total={state.memos.length} />
       </section>
     </>
   );

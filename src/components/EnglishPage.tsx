@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useMemoKeyboard } from '@/src/hooks/useMemoKeyboard';
 import {
   countEnglishByType,
   filterEnglish,
@@ -39,10 +40,6 @@ export function EnglishPage({ state, dispatch }: EnglishPageProps): React.JSX.El
   const [draftVi, setDraftVi] = useState('');
   const searchRef = useRef<HTMLInputElement | null>(null);
   const addRef = useRef<HTMLInputElement | null>(null);
-
-  // The keydown listener is registered once, so it cannot close over `query`.
-  const queryRef = useRef(query);
-  queryRef.current = query;
 
   const counts = countEnglishByType(state.english);
   const matched = filterEnglish(state.english, activeType, query);
@@ -115,31 +112,12 @@ export function EnglishPage({ state, dispatch }: EnglishPageProps): React.JSX.El
     revealRow(item.id);
   };
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent): void => {
-      const target = event.target as HTMLElement | null;
-      const typing = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA';
-
-      if (event.key === '/' && !typing) {
-        event.preventDefault();
-        searchRef.current?.focus();
-        return;
-      }
-      if (event.key !== 'Escape') {
-        return;
-      }
-      if (!queryRef.current) {
-        return;
-      }
-      event.preventDefault();
-      setQuery('');
-      searchRef.current?.blur();
-    };
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, []);
+  useMemoKeyboard({
+    enabled: true,
+    searchRef,
+    query,
+    onQueryChange: setQuery,
+  });
 
   const copy = (item: EnglishItem): void => {
     navigator.clipboard
