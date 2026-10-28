@@ -30,7 +30,7 @@ Either clone the repository:
 
 ```bash
 git clone <repository-url>
-cd my-todo-list-ext
+cd my-note-extension
 ```
 
 …or download the ZIP from the repository page and unzip it somewhere permanent.
@@ -157,7 +157,7 @@ To move a task to a different day, drag it onto that day's heading.
 | Delete one task     | Hover the row and click the `×`                                                            |
 | Tick everything off | **✓ MARK ALL** in the header                                                               |
 | Delete everything   | **CLEAR** in the header, then click again to confirm                                       |
-| Export to CSV       | The **↓** chip in the header                                                                |
+| Export to CSV       | The **↓** chip in the header                                                               |
 
 ---
 
@@ -168,17 +168,17 @@ body, and copies to the clipboard in a single click.
 
 ### The library
 
-| Action                 | How                                                              |
-| ---------------------- | ---------------------------------------------------------------- |
-| Copy a snippet         | Click **Copy**. It turns teal for a moment and counts the use    |
-| Filter by type         | The chips along the top — **All**, Git, SQL, Config, Shell, Note |
-| Search                 | The field at the bottom, or press `/` from anywhere              |
-| Clear the search       | **Escape**                                                        |
-| Move between snippets  | `↑` and `↓`                                                      |
-| Copy the focused one   | **Enter**                                                         |
-| Pin / unpin            | Right-click the row                                               |
-| New snippet            | The **+** button, or press `n`                                   |
-| Edit a snippet         | Click its title, or press `e` on the focused row                 |
+| Action                | How                                                              |
+| --------------------- | ---------------------------------------------------------------- |
+| Copy a snippet        | Click **Copy**. It turns teal for a moment and counts the use    |
+| Filter by type        | The chips along the top — **All**, Git, SQL, Config, Shell, Note |
+| Search                | The field at the bottom, or press `/` from anywhere              |
+| Clear the search      | **Escape**                                                       |
+| Move between snippets | `↑` and `↓`                                                      |
+| Copy the focused one  | **Enter**                                                        |
+| Pin / unpin           | Right-click the row                                              |
+| New snippet           | The **+** button, or press `n`                                   |
+| Edit a snippet        | Click its title, or press `e` on the focused row                 |
 
 Pinned snippets sit in a **PINNED** group above **RECENT**. A group with nothing
 in it is hidden rather than shown empty.
@@ -189,12 +189,12 @@ Pick one of five types — **Git**, **SQL**, **Shell**, **Config**, **Note**. Th
 type decides the body's label, its hint, and the options offered beside it
 (which database, which shell, which config format). Git has no options.
 
-| | |
-| --- | --- |
-| Save | **Save**, or `Cmd`/`Ctrl` + `Enter` |
-| Go back | **←**, or **Escape** |
-| Delete | **Delete**, then **Confirm delete** within 3 seconds |
-| Pin it | The **Pin to the top** switch |
+|         |                                                      |
+| ------- | ---------------------------------------------------- |
+| Save    | **Save**, or `Cmd`/`Ctrl` + `Enter`                  |
+| Go back | **←**, or **Escape**                                 |
+| Delete  | **Delete**, then **Confirm delete** within 3 seconds |
+| Pin it  | The **Pin to the top** switch                        |
 
 A few behaviours worth knowing:
 
@@ -212,11 +212,11 @@ A few behaviours worth knowing:
 
 The **⚙** button beside the mode switch.
 
-| Setting            | What it does                                                           |
-| ------------------ | ---------------------------------------------------------------------- |
-| **Dark mode**      | Switches the whole popup, both modes                                   |
-| **Wide mode**      | Widens the popup and wraps long task text instead of truncating it     |
-| **Daily reminder** | Opens a reminder window at the time you pick                           |
+| Setting            | What it does                                                       |
+| ------------------ | ------------------------------------------------------------------ |
+| **Dark mode**      | Switches the whole popup, both modes                               |
+| **Wide mode**      | Widens the popup and wraps long task text instead of truncating it |
+| **Daily reminder** | Opens a reminder window at the time you pick                       |
 
 ### Resizing in wide mode
 

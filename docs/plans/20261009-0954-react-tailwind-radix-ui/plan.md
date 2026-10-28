@@ -276,4 +276,4 @@ shared CSS — on the page where a mistake is cheap.
   alone as the only non-component feature. Decide before phase 4 rather than
   drifting into a half-renamed tree.
 - **Version bump.** `1.0.4` today. A full UI rewrite with deliberately zero
-  user-visible change is an odd fit for any number; `1.1.0` is the least wrong.
+  user-visible change is an odd fit for any number; `1.1.1` is the least wrong.

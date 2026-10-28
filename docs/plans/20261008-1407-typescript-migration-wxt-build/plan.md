@@ -15,7 +15,7 @@ also become a bundler project.
 
 **Stated concern, not a blocker.** The repo's current identity is "no build
 step, no framework, no dependencies" — the folder you point `chrome://extensions`
-at *is* the source. WXT ends that: there will be a `node_modules`, a generated
+at _is_ the source. WXT ends that: there will be a `node_modules`, a generated
 manifest, and an `.output/` directory that is the only thing Chrome can load.
 That is a real and permanent cost, and it is the right trade only if typed state
 and a dev-reload loop are worth more than direct-load simplicity. The user chose
@@ -55,16 +55,16 @@ WXT with that in view, so this plan delivers it in full.
 Before executing, the plan's risky assumptions were tested in a throwaway
 project mirroring this repo's shape. Results, because they changed the plan:
 
-| Assumption | Result |
-| --- | --- |
-| HTML entrypoints flatten to the output root | **Holds.** `entrypoints/popup.html` → `.output/chrome-mv3/popup.html`; same for `reminder.html`. `action.default_popup` generated automatically. |
-| `src/` can sit beside `entrypoints/` | **Holds on default config.** No `srcDir` or `entrypointsDir` needed. |
-| A shared `<link href="../src/popup.css">` from both pages | **Holds.** Vite extracts one `assets/popup-*.css` and links it from both. |
-| `node verify/*.ts` runs the real sources | **Holds.** No build, no stubs, `window` undefined. |
-| `erasableSyntaxOnly` catches `enum` | **Holds.** `TS1294`. |
-| `allowJs` lets a `.js` file import a `.ts` file | **Holds.** Phase 1 can ship zero TypeScript. |
-| chrome types come from WXT | **False.** WXT 0.21 ships no global `chrome` — its own API is `browser` from `wxt/browser`. `tsc` gives `TS2304: Cannot find name 'chrome'`. Fixed by `@types/chrome`, which keeps every existing `chrome.*` call site unchanged. |
-| `defineBackground` is importable | **Needs config.** It is a WXT *auto-import*, so an entrypoint using it is not `node`-importable — which Phase 4's `verify/background.ts` requires. Fixed by `imports: false` plus `import { defineBackground } from "wxt/utils/define-background"`. Verified: build works and the verify script can call `.main()` and assert listener registration. |
+| Assumption                                                | Result                                                                                                                                                                                                                                                                                                                                               |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| HTML entrypoints flatten to the output root               | **Holds.** `entrypoints/popup.html` → `.output/chrome-mv3/popup.html`; same for `reminder.html`. `action.default_popup` generated automatically.                                                                                                                                                                                                     |
+| `src/` can sit beside `entrypoints/`                      | **Holds on default config.** No `srcDir` or `entrypointsDir` needed.                                                                                                                                                                                                                                                                                 |
+| A shared `<link href="../src/popup.css">` from both pages | **Holds.** Vite extracts one `assets/popup-*.css` and links it from both.                                                                                                                                                                                                                                                                            |
+| `node verify/*.ts` runs the real sources                  | **Holds.** No build, no stubs, `window` undefined.                                                                                                                                                                                                                                                                                                   |
+| `erasableSyntaxOnly` catches `enum`                       | **Holds.** `TS1294`.                                                                                                                                                                                                                                                                                                                                 |
+| `allowJs` lets a `.js` file import a `.ts` file           | **Holds.** Phase 1 can ship zero TypeScript.                                                                                                                                                                                                                                                                                                         |
+| chrome types come from WXT                                | **False.** WXT 0.21 ships no global `chrome` — its own API is `browser` from `wxt/browser`. `tsc` gives `TS2304: Cannot find name 'chrome'`. Fixed by `@types/chrome`, which keeps every existing `chrome.*` call site unchanged.                                                                                                                    |
+| `defineBackground` is importable                          | **Needs config.** It is a WXT _auto-import_, so an entrypoint using it is not `node`-importable — which Phase 4's `verify/background.ts` requires. Fixed by `imports: false` plus `import { defineBackground } from "wxt/utils/define-background"`. Verified: build works and the verify script can call `.main()` and assert listener registration. |
 
 `imports: false` is the right default for this codebase independently of
 testability: nothing else in it is magic, and an auto-imported global would be
@@ -117,7 +117,7 @@ works in a plain `node` script, and `utils.ts` can still be exercised with no
 Two constraints follow, and they are not optional:
 
 1. **`erasableSyntaxOnly: true` in `tsconfig.json`.** Node strips types; it does
-   not *execute* TypeScript. `enum`, `namespace`, parameter properties, and
+   not _execute_ TypeScript. `enum`, `namespace`, parameter properties, and
    `declare` fields are non-erasable and would make the file crash under plain
    `node` while compiling fine under WXT. The flag turns that runtime surprise
    into a compile error.
@@ -146,8 +146,8 @@ validation that already exists becomes the type guard that justifies it. No
 Branded-ish aliases for the two string formats that are load-bearing:
 
 ```ts
-export type DayKey = string;     // "YYYY-MM-DD", documented, see isDayKey()
-export type TimeOfDay = string;  // "HH:MM" local, see isTimeOfDay()
+export type DayKey = string; // "YYYY-MM-DD", documented, see isDayKey()
+export type TimeOfDay = string; // "HH:MM" local, see isTimeOfDay()
 ```
 
 Plain aliases, deliberately not branded. A real brand (`string & { __day: never }`)
@@ -178,19 +178,19 @@ export function el<T extends HTMLElement>(id: string): T {
 
 Rejected: `document.getElementById("draft")!` at each site. The `!` is three
 characters cheaper and strictly worse here — a missing id currently produces
-`Cannot read properties of null`, pointing at the *use*, several frames from the
+`Cannot read properties of null`, pointing at the _use_, several frames from the
 cause. `el()` names the id in the message at the point of capture, which is
 precisely the failure mode `CLAUDE.md` calls out as "fails at runtime with no
 error at edit time". The throw also keeps `reminder.ts`'s existing refusal to
 import `popup.ts` honest for the same reason it already is.
 
-`dom.ts` is a *separate* file from `utils.ts` on purpose: `utils.ts` stays
+`dom.ts` is a _separate_ file from `utils.ts` on purpose: `utils.ts` stays
 DOM-free and service-worker-importable, which the plan treats as inviolable.
 
 ### Background entrypoint: listeners move inside `main()`
 
 `CLAUDE.md` requires every listener registered at top level so an idle-terminated
-worker can be woken for it. WXT changes the *shape* of that requirement without
+worker can be woken for it. WXT changes the _shape_ of that requirement without
 changing the requirement: `entrypoints/background.ts` must export
 `defineBackground({ type: "module", main() { ... } })`, imported explicitly from
 `wxt/utils/define-background` (not relied on as an auto-import — see the spike
@@ -205,13 +205,13 @@ the worker silently at runtime. Both are worth a comment in the file.
 
 ## Phases
 
-| Phase | File | What it delivers |
-|-------|------|-----------------|
-| 1 | `plan-1-wxt-build-with-javascript.md` | WXT builds the **existing JS**, unchanged, into a loadable extension. Language untouched. |
-| 2 | `plan-2-core-types-and-utils.md` | `src/core/types.ts`, `src/core/dom.ts`, and `utils.js` → `utils.ts` under strict. |
-| 3 | `plan-3-ui-and-features.md` | `ui/menu`, `ui/drag-drop`, and all four `features/*` converted. |
-| 4 | `plan-4-entrypoints.md` | `popup`, `reminder`, `background` converted; `allowJs` turned off. |
-| 5 | `plan-5-verification-and-docs.md` | jsdom scripts promoted into the repo; `CLAUDE.md`, `README.md`, `CHANGELOG.md` corrected. |
+| Phase | File                                  | What it delivers                                                                          |
+| ----- | ------------------------------------- | ----------------------------------------------------------------------------------------- |
+| 1     | `plan-1-wxt-build-with-javascript.md` | WXT builds the **existing JS**, unchanged, into a loadable extension. Language untouched. |
+| 2     | `plan-2-core-types-and-utils.md`      | `src/core/types.ts`, `src/core/dom.ts`, and `utils.js` → `utils.ts` under strict.         |
+| 3     | `plan-3-ui-and-features.md`           | `ui/menu`, `ui/drag-drop`, and all four `features/*` converted.                           |
+| 4     | `plan-4-entrypoints.md`               | `popup`, `reminder`, `background` converted; `allowJs` turned off.                        |
+| 5     | `plan-5-verification-and-docs.md`     | jsdom scripts promoted into the repo; `CLAUDE.md`, `README.md`, `CHANGELOG.md` corrected. |
 
 Phase 1 exists to separate the two risks. "The extension now needs a build step"
 and "the extension is now TypeScript" are independent failure modes, and
@@ -256,7 +256,7 @@ language change verified against a build that already worked.
   committed as design history or added to `.gitignore`.
 - **Version number.** `manifest.json` says `1.0.3`. A migration with no
   user-visible change argues for `1.0.4`; a change that makes the repo
-  unloadable-as-is arguably deserves `1.1.0`. Needs a call before phase 5.
+  unloadable-as-is arguably deserves `1.1.1`. Needs a call before phase 5.
 - **Icon naming.** WXT auto-generates the manifest `icons` key from
   `public/icon/{size}.png` — but this repo's files are `icons/icon16.png`, and
   WXT does **not** emit `action.default_icon` at all. Two options: rename the
@@ -268,7 +268,7 @@ language change verified against a build that already worked.
   default config. `src/` stays the module root with `entrypoints/` beside it, and
   no `srcDir` / `entrypointsDir` setting is needed.
 - ~~**`popup.css` ownership.**~~ **Resolved by spike:** keep the `<link
-  href="../src/popup.css">` in both pages. Vite extracts one hashed stylesheet
+href="../src/popup.css">` in both pages. Vite extracts one hashed stylesheet
   and links it from both — the shared-CSS arrangement survives untouched, so
   there is nothing to decide.
 - **Does the IME `Enter` issue reproduce under the dev-reload loop?** Unrelated
