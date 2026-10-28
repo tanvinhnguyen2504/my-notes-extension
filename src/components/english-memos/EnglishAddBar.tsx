@@ -15,7 +15,7 @@ type Props = {
 
 // The hint reads from the SAME detectType the save uses. A second heuristic
 // inline here is a rule that can drift from what actually gets stored.
-function hintFor(en: string): string {
+function hintWhenInputEnglishMemo(en: string): string {
   const trimmed = en.trim();
   if (!trimmed) {
     return '';
@@ -81,7 +81,9 @@ export function EnglishAddBar({ en, vi, enRef, onEnChange, onViChange, onSave }:
         </button>
       </div>
 
-      {hintFor(en) && <p className="m-0 mt-[6px] h-[14px] text-[10.5px] leading-[14px] text-dim">{hintFor(en)}</p>}
+      {hintWhenInputEnglishMemo(en) && (
+        <p className="m-0 mt-[6px] h-[14px] text-[10.5px] leading-[14px] text-teal italic">{hintWhenInputEnglishMemo(en)}</p>
+      )}
     </section>
   );
 }
