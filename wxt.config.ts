@@ -15,7 +15,7 @@ export default defineConfig({
 
   manifest: {
     name: 'Tasks',
-    version: '1.1.0',
+    version: '1.1.1',
     description: "A small browser extension that improves developers' productivity.",
     permissions: ['storage', 'alarms'],
     // WXT derives `icons` only from public/icon/{size}.png and never emits
