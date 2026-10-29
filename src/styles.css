@@ -12,19 +12,43 @@
 @import 'tailwindcss/utilities.css' layer(utilities);
 
 @theme {
-  --color-bg: #f7f5f1;
-  --color-surface: #fffdfa;
+  /* The page and the cards sitting on it were 2% apart (#f7f5f1 / #fffdfa),
+     which reads as one flat sheet: headers, rows and cards all dissolved into
+     each other. The page is pushed down and the surfaces up to pure white, so
+     every `bg-surface` block now lifts off the page on its own. */
+  --color-bg: #ebe8e1;
+  --color-surface: #ffffff;
   --color-ink: #17161a;
-  --color-dim: rgba(23, 22, 26, 0.45);
-  --color-soft: rgba(23, 22, 26, 0.4);
-  --color-line: rgba(23, 22, 26, 0.09);
-  --color-hair: rgba(23, 22, 26, 0.055);
-  --color-chip: rgba(23, 22, 26, 0.06);
-  --color-track: rgba(23, 22, 26, 0.09);
+  /* The two secondary text alphas carry nearly all the small type in the UI
+     (52 `text-dim`, 4 `text-soft`), so they are the palette's load-bearing
+     contrast decision -- not a shade preference. At 0.45 / 0.40 they measured
+     2.94 and 2.55 against --color-surface, well under WCAG AA's 4.5 for body
+     and 10-12px text. Raised to clear it (5.55 / 4.68) while keeping the
+     original 0.05 step between them, so the hierarchy survives the fix. */
+  --color-dim: rgba(23, 22, 26, 0.65);
+  --color-soft: rgba(23, 22, 26, 0.6);
+  /* Structure alphas. These were carried over from dark, where a light
+     overlay on a dark ground reads far heavier than the same alpha of dark on
+     near-white -- so at 0.09 / 0.055 the card edges and row rules were at the
+     edge of visible. Roughly 1.5x across the set keeps the ordering
+     (line > hair, chip > hover) while making each one actually land. */
+  --color-line: rgba(23, 22, 26, 0.145);
+  --color-hair: rgba(23, 22, 26, 0.085);
+  --color-chip: rgba(23, 22, 26, 0.075);
+  --color-track: rgba(23, 22, 26, 0.14);
   --color-dash: rgba(23, 22, 26, 0.25);
-  --color-box: rgba(23, 22, 26, 0.3);
-  --color-hover: rgba(23, 22, 26, 0.035);
-  --color-teal: oklch(0.62 0.11 175);
+  /* Draws the task checkbox and the priority menu's empty ring -- control
+     boundaries, so the 3:1 for non-text UI applies. 0.30 measured 1.95. */
+  --color-box: rgba(23, 22, 26, 0.55);
+  /* 0.035 on white is ~1% of perceived change: the row hover and the
+     drop-into marker were both invisible in light mode. */
+  --color-hover: rgba(23, 22, 26, 0.062);
+  /* L was 0.62, which put teal at 3.39 against --color-surface. That one
+     number is three failures: `text-teal` as 10.5px type, --color-on-teal
+     reversed out of a `bg-teal` fill, and the focus ring. Dropping to 0.52
+     takes the pair to 5.03 and clears AA in both directions at once; hue and
+     chroma are untouched, so nothing else in the family shifts. */
+  --color-teal: oklch(0.52 0.11 175);
   --color-on-teal: #fffdfa;
   --color-clay: oklch(0.58 0.13 40);
   --color-clay-ink: oklch(0.48 0.11 40);
@@ -47,13 +71,15 @@
   --color-tag-low-bg: color-mix(in oklch, var(--color-pri-low) 90%, black);
   --color-tag-low-fg: var(--color-surface);
 
-  --shadow-knob: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-knob: 0 1px 2px rgba(0, 0, 0, 0.28);
   /* Memo type dots, memo.md section 0. One colour per TYPE, not per sub-type. */
   --color-type-git: oklch(0.6 0.13 40);
   --color-type-database: oklch(0.62 0.12 250);
   --color-type-config: oklch(0.62 0.12 140);
   --color-type-shell: rgba(23, 22, 26, 0.45);
-  --color-type-note: oklch(0.7 0.1 85);
+  /* The only dot of the five that missed 3:1 against surface at its drawn
+     size: 2.65 at L 0.70, 3.33 at 0.64. The other four already cleared it. */
+  --color-type-note: oklch(0.64 0.1 85);
 
   /* Dark in BOTH themes: a snippet reads as a terminal. */
   --color-code-bg: #17161a;
@@ -75,7 +101,7 @@
   --color-warn-bg: oklch(0.95 0.05 85);
   --color-warn-ink: oklch(0.45 0.1 70);
 
-  --color-mark-bg: color-mix(in oklch, var(--color-teal) 18%, var(--color-surface));
+  --color-mark-bg: color-mix(in oklch, var(--color-teal) 24%, var(--color-surface));
   --color-mark-fg: color-mix(in oklch, var(--color-teal) 75%, black);
 
   /* Reuses the clay hue CLEAR already speaks in, not a second red. */
@@ -85,7 +111,7 @@
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   --shadow-menu: 0 6px 24px rgba(0, 0, 0, 0.14), 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-segment: 0 1px 2px rgba(0, 0, 0, 0.08);
+  --shadow-segment: 0 1px 2px rgba(0, 0, 0, 0.16);
 
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
@@ -206,7 +232,8 @@ html[data-width='wide'] body {
      the edges are what we want -- WidthGrip does it. These two stay as a
      backstop so a bad --wide-width can still never paint out of range. */
   min-width: 380px;
-  max-width: 780px;
+  /* max-width: 780px; */
+  max-width: 1460px;
 }
 
 /* The reminder window is sized by chrome.windows.create, so it fills whatever

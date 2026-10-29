@@ -51,7 +51,9 @@ Never commit, push, or tag without being asked explicitly. Full rule:
 | `src/hooks/useDragDrop.ts`                                                                                                        | HTML5 drag events, drop markers, the dragged-row ref                                                    |
 | `src/hooks/useWidthDrag.ts`                                                                                                       | Edge-drag resize. Pointer capture, writes `--wide-width`, commits on release                            |
 | `src/hooks/useMemoKeyboard.ts`                                                                                                    | The shared page shortcuts for `MemoPage` and `EnglishPage`. One global `keydown`, registered once        |
-| `src/components/{TaskHeader,Compose,Progress,DayGroupSection,DueChip,EditableText,EmptyState,HintToast,PriorityMenu,SettingSwitch,Tab}.tsx` | The rest of the tree                                                                                    |
+| `src/hooks/useResolvedTheme.ts`                                                                                                   | Resolves SYSTEM, follows the OS live, owns `data-theme` + `color-scheme`, mirrors the pref for no-flash  |
+| `public/theme-init.js`                                                                                                            | Pre-paint theme, from `<head>` on both pages. Plain script, duplicated cache key — see Traps             |
+| `src/components/{TaskHeader,Compose,Progress,DayGroupSection,DueChip,EditableText,EmptyState,HintToast,PriorityMenu,SettingSwitch,Tab,ThemeSetting}.tsx` | The rest of the tree                                                                                    |
 | `src/features/export.ts`                                                                                                          | CSV export. The only non-component feature                                                              |
 | `public/icons/`                                                                                                                   | Copied verbatim to the output root                                                                      |
 
@@ -71,10 +73,12 @@ relative to `.wxt/` — so the `src/` segment is part of the specifier and
   item is a row that silently refuses to re-render. No-op actions return the
   _same_ state reference, which is how the view skips a save and a render.
 - **`utils.ts` and `day_utils.ts` must stay runnable in a service worker.**
-  `background.ts` imports them and a worker has no `window`, which is why
-  `preferredTheme()` guards on `typeof window`. **The compiler will not catch a
-  violation** — `lib` includes `DOM`, so `window` type-checks here regardless.
-  The guard is the only protection and nothing tests it.
+  `background.ts` imports them and a worker has no `window`. **The compiler will
+  not catch a violation** — `lib` includes `DOM`, so `window` type-checks here
+  regardless, and nothing tests it. The pattern that keeps this honest is
+  `resolveTheme(preference, prefersDark)`: it takes the media-query result as a
+  plain argument instead of reading `matchMedia`, so the DOM access lives in
+  `useResolvedTheme` and `core/` needs no `typeof window` guard at all.
 - **The slice normalizers are the type boundary.** `normalizeTasks`,
   `normalizeSettings` and `normalizeMemos` each take `unknown` and return a
   complete value for every input, `undefined` included. If a shape cannot be
@@ -144,6 +148,11 @@ Nothing reads it, so an install predating the split starts empty; the old payloa
 sits there inert.
 
 `settings` is `{ theme, width, wideWidth, mode, reminder: { enabled, time } }`.
+**`theme` is a `ThemePreference` (`system` | `light` | `dark`), not a `Theme`.**
+The two types are deliberately separate: `Theme` is the resolved pair that may
+be written to `data-theme`, and `styles.css` has no block for `system` — storing
+the preference where a resolved value is expected loses every dark token with no
+error. `useResolvedTheme` is the only bridge between them.
 `normalizeSettings()` always returns a _complete_ object — never spread a partial
 saved value into live state, because a missing nested field reads as `undefined`
 exactly where it matters and fails silently. `wideWidth` is px, meaningful only

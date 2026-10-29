@@ -3,10 +3,10 @@
 // return the SAME reference, so callers skip a save and a render by identity.
 
 import { touchMemo } from './memo_utils';
-import { Task, Priority, PopupMode, State, TimeOfDay } from './types';
+import { Task, Priority, PopupMode, State, ThemePreference, TimeOfDay } from './types';
 import { EnglishItem } from './types/english';
 import { IMemo } from './types/memos';
-import { clampWideWidth, isAllDone, isTimeOfDay, moveItem, nextWidth, parseDraft, setAllDone, sortByPriority, switchTheme } from './utils';
+import { clampWideWidth, isAllDone, isTimeOfDay, moveItem, nextWidth, parseDraft, setAllDone, sortByPriority } from './utils';
 
 export type Action =
   | { type: 'ADD_ITEM'; text: string }
@@ -18,7 +18,7 @@ export type Action =
   | { type: 'MOVE_ITEM'; from: number; to: number }
   | { type: 'MARK_ALL' }
   | { type: 'CLEAR_ALL' }
-  | { type: 'SET_THEME' }
+  | { type: 'SET_THEME'; theme: ThemePreference }
   | { type: 'SET_WIDTH' }
   | { type: 'SET_WIDE_WIDTH'; width: number }
   | { type: 'SET_REMINDER_ENABLED' }
@@ -148,7 +148,10 @@ export function reducer(state: State, action: Action): State {
     }
 
     case 'SET_THEME': {
-      return { ...state, settings: { ...state.settings, theme: switchTheme(state.settings.theme) } };
+      if (action.theme === state.settings.theme) {
+        return state;
+      }
+      return { ...state, settings: { ...state.settings, theme: action.theme } };
     }
 
     case 'SET_WIDTH': {

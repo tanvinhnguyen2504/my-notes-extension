@@ -6,6 +6,7 @@ import { MEMOS_KEY, normalizeMemos } from '@/src/storages/memo';
 import { SETTINGS_KEY, normalizeSettings } from '@/src/storages/settings';
 import { emptyState, loadState, persistChanged } from '@/src/storages/state';
 import { WIDE_WIDTH_PROPERTY, WIDTH, clampWideWidth } from '@/src/core/utils';
+import { useResolvedTheme } from '@/src/hooks/useResolvedTheme';
 import { useWidthDrag } from '@/src/hooks/useWidthDrag';
 import { TASKS_KEY, normalizeTasks } from '@/src/storages/tasks';
 import { EnglishPage } from './EnglishPage';
@@ -85,12 +86,15 @@ export function PopupPage(): React.JSX.Element {
     };
   }, []);
 
+  // Resolves SYSTEM, follows the OS live, and owns both `data-theme` and
+  // `color-scheme` on <html>.
+  useResolvedTheme(state.settings.theme);
+
   // On <html>, not a wrapper: Radix portals menus to document.body.
   useEffect(() => {
-    document.documentElement.dataset.theme = state.settings.theme;
     document.documentElement.dataset.width = state.settings.width;
     document.documentElement.style.setProperty(WIDE_WIDTH_PROPERTY, `${state.settings.wideWidth}px`);
-  }, [state.settings.theme, state.settings.width, state.settings.wideWidth]);
+  }, [state.settings.width, state.settings.wideWidth]);
 
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [hintOpen, setHintOpen] = useState(false);
@@ -187,8 +191,8 @@ export function PopupPage(): React.JSX.Element {
         {settingsOpen ? (
           <SettingDetailsPanel
             state={state}
-            onToggleTheme={() => {
-              dispatch({ type: 'SET_THEME' });
+            onPickTheme={(preference) => {
+              dispatch({ type: 'SET_THEME', theme: preference });
             }}
             onToggleWidth={() => {
               dispatch({ type: 'SET_WIDTH' });
