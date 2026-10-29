@@ -1,9 +1,12 @@
 import { EnglishItem } from './types/english';
 import { IMemo } from './types/memos';
-import { PRIORITY, THEME, WIDTH } from './utils';
+import { PRIORITY, THEME, THEME_PREFERENCE, WIDTH } from './utils';
 
 export type Priority = (typeof PRIORITY)[keyof typeof PRIORITY];
+// The resolved value, the only two things `data-theme` may ever be.
 export type Theme = (typeof THEME)[keyof typeof THEME];
+// The stored value, which adds SYSTEM. Settings holds this one.
+export type ThemePreference = (typeof THEME_PREFERENCE)[keyof typeof THEME_PREFERENCE];
 export type Width = (typeof WIDTH)[keyof typeof WIDTH];
 
 // Not branded: a brand would force a cast at every <input type="date"> read.
@@ -30,7 +33,7 @@ export interface ReminderSettings {
 export type PopupMode = 'tasks' | 'memos' | 'english';
 
 export interface Settings {
-  theme: Theme;
+  theme: ThemePreference;
   width: Width;
   wideWidth: number;
   mode: PopupMode;

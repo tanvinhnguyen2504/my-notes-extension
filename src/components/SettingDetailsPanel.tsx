@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { State } from '@/src/core/types';
-import { THEME, WIDTH } from '@/src/core/utils';
+import { State, ThemePreference } from '@/src/core/types';
+import { WIDTH } from '@/src/core/utils';
 import { SettingSwitch } from './SettingSwitch.tsx';
+import { ThemeSetting } from './ThemeSetting';
 
 function ReminderTime({ time, onPick }: { time: string; onPick: (time: string) => void }): React.JSX.Element {
   const [draft, setDraft] = useState(time);
@@ -32,7 +33,7 @@ function ReminderTime({ time, onPick }: { time: string; onPick: (time: string) =
 
 type SettingDetailsPanelProps = {
   state: State;
-  onToggleTheme: () => void;
+  onPickTheme: (preference: ThemePreference) => void;
   onToggleWidth: () => void;
   onToggleReminder: () => void;
   onPickReminderTime: (time: string) => void;
@@ -40,7 +41,7 @@ type SettingDetailsPanelProps = {
 
 export function SettingDetailsPanel({
   state,
-  onToggleTheme,
+  onPickTheme,
   onToggleWidth,
   onToggleReminder,
   onPickReminderTime,
@@ -49,7 +50,7 @@ export function SettingDetailsPanel({
 
   return (
     <section id="settings-panel" className="flex-none pt-[4px] px-[16px] pb-[10px] bg-surface border-b border-line">
-      <SettingSwitch id="set-theme" label="Dark mode" checked={state.settings.theme === THEME.DARK} onToggle={onToggleTheme} />
+      <ThemeSetting value={state.settings.theme} onChange={onPickTheme} />
       <SettingSwitch
         id="set-width"
         label="Wide mode"

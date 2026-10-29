@@ -1,11 +1,13 @@
 // Ticking here writes the shared storage key, which the popup picks up through
 // chrome.storage.onChanged.
 
-import { useEffect, useReducer } from 'react';
+import { useEffect, useReducer, useRef } from 'react';
 import { Action, reducer } from '@/src/core/reducer';
 import { State } from '@/src/core/types';
 import { sortByPriority } from '@/src/core/utils';
+import { SETTINGS_KEY, normalizeSettings } from '@/src/storages/settings';
 import { emptyState, loadState, persistChanged } from '@/src/storages/state';
+import { useResolvedTheme } from '@/src/hooks/useResolvedTheme';
 import { CHIP, CHIP_HOVER } from './TaskHeader';
 import { NoteRow } from './NoteRow';
 
@@ -39,9 +41,40 @@ export function ReminderPage(): React.JSX.Element {
   const [state, dispatch] = usePageState();
 
   // On <html>, outside the React root -- a contract with styles.css.
+  useResolvedTheme(state.settings.theme);
+
+  // This window loads state once and is otherwise never told anything changed,
+  // so without this listener it keeps whichever theme was stored when it
+  // opened. Settings only: a task ticked in the popup is not this window's
+  // business, and replacing `tasks` mid-session would move rows under the
+  // pointer.
+  const stateRef = useRef(state);
+  stateRef.current = state;
+
   useEffect(() => {
-    document.documentElement.dataset.theme = state.settings.theme;
-  }, [state.settings.theme]);
+    if (typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.onChanged) {
+      return;
+    }
+    const onChanged = (changes: Record<string, chrome.storage.StorageChange>, area: string): void => {
+      if (area !== 'local') {
+        return;
+      }
+      const settingsChange = changes[SETTINGS_KEY];
+      if (!settingsChange) {
+        return;
+      }
+      const settings = normalizeSettings(settingsChange.newValue);
+      const current = stateRef.current;
+      if (JSON.stringify(settings) === JSON.stringify(current.settings)) {
+        return;
+      }
+      dispatch({ type: 'REPLACE_STATE', state: { ...current, settings } });
+    };
+    chrome.storage.onChanged.addListener(onChanged);
+    return () => {
+      chrome.storage.onChanged.removeListener(onChanged);
+    };
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {

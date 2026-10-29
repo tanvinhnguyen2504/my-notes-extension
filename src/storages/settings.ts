@@ -1,5 +1,5 @@
-import { PopupMode, Settings, Theme } from '@/src/core/types';
-import { DEFAULT_SETTINGS, THEME, WIDTH, clampWideWidth, isRecord, isTimeOfDay, preferredTheme } from '@/src/core/utils';
+import { PopupMode, Settings, ThemePreference } from '@/src/core/types';
+import { DEFAULT_SETTINGS, THEME_PREFERENCE, WIDTH, clampWideWidth, isRecord, isTimeOfDay } from '@/src/core/utils';
 import { getDataFromStorageByKey, setDataToStorageByKey } from './local';
 
 export const SETTINGS_KEY = 'settings.v1';
@@ -11,14 +11,18 @@ function savedMode(value: unknown): PopupMode {
   return 'tasks';
 }
 
-function savedTheme(value: unknown): Theme {
-  if (value === THEME.DARK) {
-    return THEME.DARK;
+// No migration step for the pre-SYSTEM layout, and none is needed: anything
+// that is not an explicit 'light' or 'dark' -- a legacy boolean included --
+// falls through to SYSTEM, which resolves to the OS preference. That is the
+// same thing the old code did by calling preferredTheme() here.
+function savedTheme(value: unknown): ThemePreference {
+  if (value === THEME_PREFERENCE.LIGHT) {
+    return THEME_PREFERENCE.LIGHT;
   }
-  if (value === THEME.LIGHT) {
-    return THEME.LIGHT;
+  if (value === THEME_PREFERENCE.DARK) {
+    return THEME_PREFERENCE.DARK;
   }
-  return preferredTheme();
+  return THEME_PREFERENCE.SYSTEM;
 }
 
 export function normalizeSettings(saved: unknown): Settings {

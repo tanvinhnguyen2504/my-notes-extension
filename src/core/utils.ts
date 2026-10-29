@@ -1,5 +1,5 @@
 import { extractDayToken, todayKey } from './day_utils';
-import { Priority, Settings, Task, Theme, TimeOfDay, Width } from './types';
+import { Priority, Settings, Task, Theme, ThemePreference, TimeOfDay, Width } from './types';
 
 export const PRIORITY = {
   LOW: 0,
@@ -7,7 +7,17 @@ export const PRIORITY = {
   HIGH: 2,
 } as const;
 
+// Two const objects on purpose. THEME is what gets RESOLVED and written to
+// <html data-theme>; THEME_PREFERENCE is what gets STORED. Folding SYSTEM into
+// THEME would widen `Theme`, and `dataset.theme = 'system'` matches no rule in
+// styles.css -- every token would fall back to the light block with no error.
 export const THEME = {
+  LIGHT: 'light',
+  DARK: 'dark',
+} as const;
+
+export const THEME_PREFERENCE = {
+  SYSTEM: 'system',
   LIGHT: 'light',
   DARK: 'dark',
 } as const;
@@ -26,8 +36,8 @@ export const WIDE_WIDTH = {
   DEFAULT: 720,
 } as const;
 
-// `theme` is absent: its default is the OS preference, resolved in the normalizer.
-export const DEFAULT_SETTINGS: Omit<Settings, 'theme'> = {
+export const DEFAULT_SETTINGS: Settings = {
+  theme: THEME_PREFERENCE.SYSTEM,
   width: WIDTH.COMPACT,
   wideWidth: WIDE_WIDTH.DEFAULT,
   mode: 'tasks',
@@ -98,8 +108,16 @@ export function sortByPriority(items: Task[]): Task[] {
   return [...items].sort((a, b) => rank(a) - rank(b));
 }
 
-export function switchTheme(theme: Theme): Theme {
-  return theme === THEME.LIGHT ? THEME.DARK : THEME.LIGHT;
+// Pure, and takes `prefersDark` as a value rather than reading matchMedia, so
+// core stays DOM-free and this stays callable from the service worker.
+export function resolveTheme(preference: ThemePreference, prefersDark: boolean): Theme {
+  if (preference === THEME_PREFERENCE.LIGHT) {
+    return THEME.LIGHT;
+  }
+  if (preference === THEME_PREFERENCE.DARK) {
+    return THEME.DARK;
+  }
+  return prefersDark ? THEME.DARK : THEME.LIGHT;
 }
 
 export function nextWidth(width: Width): Width {
@@ -119,13 +137,6 @@ export function clampWideWidth(value: unknown): number {
     return WIDE_WIDTH.MAX;
   }
   return width;
-}
-
-// The `typeof window` guard is load-bearing: the worker has no window, and the
-// compiler cannot catch it -- lib DOM makes `window` type-check here regardless.
-export function preferredTheme(): Theme {
-  const prefersDark = typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  return prefersDark ? THEME.DARK : THEME.LIGHT;
 }
 
 export function countDone(items: Task[]): number {
