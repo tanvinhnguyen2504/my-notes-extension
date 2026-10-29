@@ -1,3 +1,8 @@
+# 2026-10-29
+
+- [#PR10](https://github.com/tanvinhnguyen2504/my-notes-extension/pull/10)
+  - feat(settings): improve theme light mode
+
 # 2026-10-28
 
 - feat(popup): add custom hook useMemoKeyboard and add the hint toast
