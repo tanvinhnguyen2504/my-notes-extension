@@ -4,26 +4,11 @@ import { ENGLISH_TYPE, EnglishItem } from '@/src/core/types/english';
 import { CopyIcon } from '../icons/CopyIcon';
 import { SpeakerIcon } from '../icons/SpeakerIcon';
 import { TrashIcon } from '../icons/TrashIcon';
+import { ACTION, COPIED_PILL, COPIED_ROW, DANGER, IDLE, REVEAL } from '@/src/components/row_classes';
 import { MarkedText } from './MarkedText';
 
 const EN_WORD = 'text-[17px] font-semibold leading-[1.3]';
 const EN_SENTENCE = 'text-[16px] font-normal leading-[1.35]';
-
-// memos/MemoRow's action size, so the two tabs' rows read as one component.
-const ACTION = 'flex-none inline-flex items-center justify-center w-[26px] h-[26px] rounded-[7px]';
-const IDLE = 'text-dim hover:text-ink hover:bg-chip';
-const DANGER = 'text-danger-ink hover:bg-chip';
-const COPIED_PILL =
-  'flex-none inline-flex items-center justify-center gap-[5px] h-[26px] min-w-[72px] px-[10px] rounded-[7px] ' +
-  'bg-teal border border-teal text-on-teal text-[11.5px] font-medium leading-none';
-
-// The copied tint has to read against --color-surface in both themes, so it is
-// mixed from the teal token rather than being a second hard-coded colour.
-const COPIED_ROW = 'bg-[color-mix(in_oklch,var(--color-teal)_7%,transparent)]';
-
-// Reveal-on-hover, as in MemoRow. The copied pill opts out by not using it:
-// an action that is currently *doing* something stays visible.
-const REVEAL = 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100';
 
 type Props = {
   item: EnglishItem;
@@ -36,16 +21,7 @@ type Props = {
   onDelete: () => void;
 };
 
-export function EnglishMemoRow({
-  item,
-  expanded,
-  highlighted,
-  copied,
-  onToggle,
-  onListen,
-  onCopy,
-  onDelete,
-}: Props): React.JSX.Element {
+export function EnglishMemoRow({ item, expanded, highlighted, copied, onToggle, onListen, onCopy, onDelete }: Props): React.JSX.Element {
   const isWord = item.type === ENGLISH_TYPE.WORD;
   const panelId = `english-panel-${item.id}`;
   const plain = stripBrackets(item.en);

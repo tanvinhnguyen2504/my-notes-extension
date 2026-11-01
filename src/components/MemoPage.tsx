@@ -120,6 +120,7 @@ export function MemosPage({ state, dispatch }: MemosPageProps): React.JSX.Elemen
         onOpen={() => {
           setDraft(memo);
         }}
+        onDelete={() => dispatch({ type: 'DELETE_MEMO', id: memo.id })}
         onTogglePin={() => {
           dispatch({ type: 'TOGGLE_MEMO_PIN', id: memo.id });
         }}

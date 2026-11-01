@@ -3,14 +3,10 @@ import { firstLine, tokenizeMemoLine } from '@/src/core/memo_utils';
 import { IMemo } from '@/src/core/types/memos';
 import { CopyIcon } from '@/src/components/icons/CopyIcon';
 import { PinIcon } from '@/src/components/icons/PinIcon';
+import { ACTION, COPIED_PILL, COPIED_ROW, DANGER, IDLE, REVEAL } from '@/src/components/row_classes';
 import { MemoLabel } from './MemoLabel';
 import { MEMO_PROMPT_GLYPH, MEMO_TOKEN_CLASS } from './constants';
-
-const ACTION = 'flex-none inline-flex items-center justify-center w-[26px] h-[26px] rounded-[7px]';
-
-// The copied tint has to read against --color-surface in both themes, so it is
-// mixed from the teal token rather than being a second hard-coded colour.
-const COPIED_ROW = 'bg-[color-mix(in_oklch,var(--color-teal)_7%,transparent)]';
+import { TrashIcon } from '../icons/TrashIcon';
 
 type Props = {
   row: IMemo;
@@ -20,9 +16,19 @@ type Props = {
   onCopy: () => void;
   onOpen: () => void;
   onTogglePin?: () => void;
+  onDelete: () => void;
 };
 
-export function MemoRow({ row, copied, focused = false, preview = false, onCopy, onOpen, onTogglePin }: Props): React.JSX.Element {
+export function MemoRow({
+  row,
+  copied,
+  focused = false,
+  preview = false,
+  onCopy,
+  onOpen,
+  onTogglePin,
+  onDelete,
+}: Props): React.JSX.Element {
   const reveal = (shown: boolean): string => {
     if (preview) {
       return 'opacity-0';
@@ -30,7 +36,7 @@ export function MemoRow({ row, copied, focused = false, preview = false, onCopy,
     if (shown) {
       return 'opacity-100';
     }
-    return 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100';
+    return REVEAL;
   };
 
   const rowState = (): string => {
@@ -58,6 +64,9 @@ export function MemoRow({ row, copied, focused = false, preview = false, onCopy,
 
   const tokens = tokenizeMemoLine(firstLine(row.content), row.type);
 
+  // The pill replaces the square action box rather than layering over it.
+  const copyClass = copied ? COPIED_PILL : `${ACTION} ${IDLE}`;
+
   return (
     <div
       ref={rowRef}
@@ -83,9 +92,7 @@ export function MemoRow({ row, copied, focused = false, preview = false, onCopy,
         </span>
 
         <span className="flex items-center gap-[8px] w-full h-[28px] px-[10px] rounded-[7px] bg-code-bg border border-code-line overflow-hidden">
-          <span className="flex-none text-[11.5px] font-mono leading-none text-code-ghost">
-            {MEMO_PROMPT_GLYPH[row.type]}
-          </span>
+          <span className="flex-none text-[11.5px] font-mono leading-none text-code-ghost">{MEMO_PROMPT_GLYPH[row.type]}</span>
           <span className="flex-1 min-w-0 truncate text-[11.5px] font-mono leading-[28px]">
             {tokens.map((token, at) => {
               return (
@@ -99,11 +106,7 @@ export function MemoRow({ row, copied, focused = false, preview = false, onCopy,
       </button>
 
       <button
-        className={`${copied ? '' : ACTION} ${reveal(copied || focused)} ${
-          copied
-            ? 'flex-none inline-flex items-center justify-center gap-[5px] h-[26px] min-w-[72px] px-[10px] rounded-[7px] bg-teal border border-teal text-on-teal text-[11.5px] font-medium leading-none'
-            : 'text-dim hover:text-ink hover:bg-chip'
-        }`}
+        className={`${copyClass} ${reveal(copied || focused)}`}
         type="button"
         title={copied ? 'Copied' : 'Copy to clipboard'}
         aria-label={copied ? 'Copied' : 'Copy to clipboard'}
@@ -112,9 +115,12 @@ export function MemoRow({ row, copied, focused = false, preview = false, onCopy,
       >
         {copied ? <span className="leading-none">{'✓'} Copied</span> : <CopyIcon />}
       </button>
+      <button className={`${ACTION} ${DANGER} ${REVEAL}`} type="button" title="Delete" onClick={onDelete}>
+        <TrashIcon />
+      </button>
 
       <button
-        className={`${ACTION} ${reveal(row.isPinned || focused)} ${row.isPinned ? 'text-teal' : 'text-dim hover:text-ink hover:bg-chip'}`}
+        className={`${ACTION} ${reveal(row.isPinned || focused)} ${row.isPinned ? 'text-teal' : IDLE}`}
         type="button"
         title={row.isPinned ? 'Unpin' : 'Pin to the top'}
         aria-label={row.isPinned ? 'Unpin' : 'Pin to the top'}

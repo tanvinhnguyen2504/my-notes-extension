@@ -2,7 +2,7 @@
   "name": "my-note-extension",
   "description": "A quiet todo checklist in your toolbar. Offline, no account, priority flags.",
   "private": true,
-  "version": "1.1.1",
+  "version": "1.1.2",
   "type": "module",
   "scripts": {
     "dev": "wxt",

@@ -10,7 +10,7 @@ export interface DayGroupSectionProps {
 export function DayGroupSection({ group, headProps, children }: DayGroupSectionProps): React.JSX.Element {
   return (
     <section
-      className="group block mt-[2px] first:mt-0"
+      className="group/day block mt-[2px] first:mt-0"
       data-key={group.key}
       data-overdue={String(!!group.key && group.key < todayKey())}
     >
@@ -20,7 +20,7 @@ export function DayGroupSection({ group, headProps, children }: DayGroupSectionP
         className="group-head sticky top-0 z-[2] flex items-center gap-[7px] pt-[7px] px-[12px] pb-[6px] bg-bg border-b border-hair text-[9.5px] font-medium leading-none tracking-[0.08em] text-dim"
         {...headProps}
       >
-        <span className="text-ink group-data-[key='']:text-clay-ink group-data-[overdue=true]:text-clay-ink">
+        <span className="text-ink group-data-[key='']/day:text-clay-ink group-data-[overdue=true]/day:text-clay-ink">
           {group.label}
         </span>
         <span className="flex-1">{group.date}</span>

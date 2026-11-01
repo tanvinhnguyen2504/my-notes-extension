@@ -1,3 +1,7 @@
+# 2026-01-11
+
+- feat(popup): improve UX for delete icon for tasks/memo page
+
 # 2026-10-29
 
 - [#PR10](https://github.com/tanvinhnguyen2504/my-notes-extension/pull/10)

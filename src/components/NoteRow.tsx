@@ -4,6 +4,8 @@
 import { formatDayKeyShort } from '@/src/core/day_utils';
 import { Task } from '@/src/core/types';
 import { PRIORITY_LABELS } from '@/src/core/utils';
+import { TrashIcon } from './icons/TrashIcon';
+import { ACTION, DANGER, REVEAL } from './row_classes';
 
 // Stated as priority AND not-done: Tailwind sorts utilities by property, not by
 // the order written, so mutually exclusive variants are the only safe way.
@@ -86,13 +88,8 @@ export function NoteRow({
         {due ?? (item.dueDate ? <span className={DUE_CLASS}>{formatDayKeyShort(item.dueDate)}</span> : null)}
         {tag ?? <span className={TAG_CLASS}>{PRIORITY_LABELS[item.priority]}</span>}
         {onDelete ? (
-          <button
-            className="flex-none w-[20px] h-[20px] rounded-[5px] text-[15px] text-dim opacity-0 group-hover:opacity-100 hover:bg-chip hover:text-ink"
-            type="button"
-            title="Delete"
-            onClick={onDelete}
-          >
-            ×
+          <button className={`${ACTION} ${DANGER} ${REVEAL}`} type="button" title="Delete" onClick={onDelete}>
+            <TrashIcon />
           </button>
         ) : null}
       </div>

@@ -256,7 +256,7 @@ language change verified against a build that already worked.
   committed as design history or added to `.gitignore`.
 - **Version number.** `manifest.json` says `1.0.3`. A migration with no
   user-visible change argues for `1.0.4`; a change that makes the repo
-  unloadable-as-is arguably deserves `1.1.1`. Needs a call before phase 5.
+  unloadable-as-is arguably deserves `1.1.2`. Needs a call before phase 5.
 - **Icon naming.** WXT auto-generates the manifest `icons` key from
   `public/icon/{size}.png` — but this repo's files are `icons/icon16.png`, and
   WXT does **not** emit `action.default_icon` at all. Two options: rename the
