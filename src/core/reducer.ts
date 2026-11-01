@@ -2,6 +2,7 @@
 // mutated-in-place item is a row that silently refuses to update. No-op actions
 // return the SAME reference, so callers skip a save and a render by identity.
 
+import { applyEnglishEdit, EnglishDraft, isSameEnglishItem } from './english_utils';
 import { touchMemo } from './memo_utils';
 import { Task, Priority, PopupMode, State, ThemePreference, TimeOfDay } from './types';
 import { EnglishItem } from './types/english';
@@ -30,6 +31,7 @@ export type Action =
   | { type: 'TOGGLE_MEMO_PIN'; id: string }
   | { type: 'COUNT_MEMO_COPY'; id: string }
   | { type: 'ADD_ENGLISH_ITEM'; item: EnglishItem }
+  | { type: 'UPDATE_ENGLISH_ITEM'; id: string; draft: EnglishDraft }
   | { type: 'DELETE_ENGLISH_ITEM'; id: string }
   | { type: 'RESTORE_ENGLISH_ITEM'; item: EnglishItem }
   | { type: 'REPLACE_STATE'; state: State };
@@ -248,6 +250,27 @@ export function reducer(state: State, action: Action): State {
         return state;
       }
       return { ...state, english: [...state.english, action.item] };
+    }
+
+    case 'UPDATE_ENGLISH_ITEM': {
+      const index = state.english.findIndex((item) => {
+        return item.id === action.id;
+      });
+      const current = state.english[index];
+      if (!current) {
+        return state;
+      }
+      const next = applyEnglishEdit(current, action.draft);
+      // Same guard as ADD: an item with no English text is not a thing.
+      if (!next.en) {
+        return state;
+      }
+      if (isSameEnglishItem(current, next)) {
+        return state;
+      }
+      const english = state.english.slice();
+      english[index] = next;
+      return { ...state, english };
     }
 
     case 'DELETE_ENGLISH_ITEM': {

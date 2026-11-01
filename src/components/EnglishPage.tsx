@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useMemoKeyboard } from '@/src/hooks/useMemoKeyboard';
 import {
   countEnglishByType,
+  detectType,
+  EnglishDraft,
   filterEnglish,
   findDuplicate,
   groupEnglishByType,
@@ -33,6 +35,7 @@ export function EnglishPage({ state, dispatch }: EnglishPageProps): React.JSX.El
   const [query, setQuery] = useState('');
   const [activeType, setActiveType] = useState<EnglishType | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [pendingUndo, setPendingUndo] = useState<EnglishItem | null>(null);
   const [highlightId, setHighlightId] = useState<string | null>(null);
@@ -113,7 +116,7 @@ export function EnglishPage({ state, dispatch }: EnglishPageProps): React.JSX.El
   };
 
   useMemoKeyboard({
-    enabled: true,
+    enabled: editingId === null,
     searchRef,
     query,
     onQueryChange: setQuery,
@@ -133,7 +136,38 @@ export function EnglishPage({ state, dispatch }: EnglishPageProps): React.JSX.El
   const remove = (item: EnglishItem): void => {
     dispatch({ type: 'DELETE_ENGLISH_ITEM', id: item.id });
     setExpandedId(null);
+    setEditingId(null);
     setPendingUndo(item);
+  };
+
+  const startEdit = (item: EnglishItem): void => {
+    setEditingId(item.id);
+    setExpandedId(item.id);
+  };
+
+  const cancelEdit = (): void => {
+    setEditingId(null);
+  };
+
+  const saveEdit = (item: EnglishItem, draft: EnglishDraft): void => {
+    // Self-collision is not a collision: an edit that leaves `en` alone must
+    // not be rejected by the item's own row.
+    const existing = findDuplicate(state.english, draft.en);
+    if (existing && existing.id !== item.id) {
+      revealRow(existing.id);
+      return;
+    }
+
+    dispatch({ type: 'UPDATE_ENGLISH_ITEM', id: item.id, draft });
+    setEditingId(null);
+
+    // Re-detection can move the row out of the active filter, where it would
+    // just appear to have vanished. Follow it instead.
+    const type = detectType(draft.en.trim());
+    if (activeType !== null && activeType !== type) {
+      setActiveType(type);
+    }
+    revealRow(item.id);
   };
 
   const undo = (): void => {
@@ -162,6 +196,7 @@ export function EnglishPage({ state, dispatch }: EnglishPageProps): React.JSX.El
                       key={item.id}
                       item={item}
                       expanded={expandedId === item.id}
+                      editing={editingId === item.id}
                       highlighted={highlightId === item.id}
                       copied={copiedId === item.id}
                       onToggle={() => {
@@ -173,9 +208,16 @@ export function EnglishPage({ state, dispatch }: EnglishPageProps): React.JSX.El
                       onCopy={() => {
                         copy(item);
                       }}
+                      onEdit={() => {
+                        startEdit(item);
+                      }}
                       onDelete={() => {
                         remove(item);
                       }}
+                      onSaveEdit={(draft) => {
+                        saveEdit(item, draft);
+                      }}
+                      onCancelEdit={cancelEdit}
                     />
                   );
                 })}

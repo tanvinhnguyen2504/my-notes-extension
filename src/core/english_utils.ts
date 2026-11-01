@@ -156,3 +156,55 @@ export function newEnglishItem(en: string, vi: string): EnglishItem {
     createdAt: Date.now(),
   };
 }
+
+// --- editing ----------------------------------------------------------
+
+// The editor's own shape: every field a string, because that is what an input
+// holds. `pos` and `example` become undefined again on the way back in.
+export interface EnglishDraft {
+  en: string;
+  vi: string;
+  pos: string;
+  example: string;
+}
+
+export function draftFromEnglishItem(item: EnglishItem): EnglishDraft {
+  return {
+    en: item.en,
+    vi: item.vi,
+    pos: item.pos ?? '',
+    example: item.example ?? '',
+  };
+}
+
+// An emptied optional field is stored as undefined, never '', so that an edit
+// produces exactly the shape savedText() would have yielded on load -- an ''
+// would survive the save and then turn into undefined on the next open.
+function optionalText(value: string): string | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  return trimmed;
+}
+
+// `type` is re-derived, never carried over, so it stays a pure function of `en`
+// exactly as it is at creation. The visible consequence is intended: an edit
+// that turns a word into a sentence moves the row between groups.
+export function applyEnglishEdit(item: EnglishItem, draft: EnglishDraft): EnglishItem {
+  const en = draft.en.trim();
+  return {
+    ...item,
+    type: detectType(en),
+    en,
+    vi: draft.vi.trim(),
+    pos: optionalText(draft.pos),
+    example: optionalText(draft.example),
+  };
+}
+
+// Field-by-field rather than JSON, so the reducer can return the SAME state
+// reference for a Save that changed nothing -- which is what skips the write.
+export function isSameEnglishItem(a: EnglishItem, b: EnglishItem): boolean {
+  return a.type === b.type && a.en === b.en && a.vi === b.vi && a.pos === b.pos && a.example === b.example;
+}
