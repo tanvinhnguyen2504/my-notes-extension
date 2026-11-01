@@ -2,6 +2,9 @@
 
 - feat(popup): improve UX for delete icon for tasks/memo page
 
+- [#PR11](https://github.com/tanvinhnguyen2504/my-notes-extension/pull/11)
+  - feat(english-memo): add edit mode for ennglish memo
+
 # 2026-10-29
 
 - [#PR10](https://github.com/tanvinhnguyen2504/my-notes-extension/pull/10)

@@ -54,6 +54,10 @@ const ENGLISH_HINTS: readonly HintSection[] = [
       { keys: ['Bin'], description: 'delete, with 5s to undo' },
     ],
   },
+  {
+    heading: 'Mouse + Keyboard',
+    hints: [{ keys: ['Click + E'], description: 'edit the english memo' }],
+  },
 ];
 
 const SECTIONS: Record<HintMode, readonly HintSection[]> = {

@@ -1,11 +1,14 @@
 import { useEffect, useRef } from 'react';
-import { stripBrackets } from '@/src/core/english_utils';
+import { EnglishDraft, stripBrackets } from '@/src/core/english_utils';
 import { ENGLISH_TYPE, EnglishItem } from '@/src/core/types/english';
 import { CopyIcon } from '../icons/CopyIcon';
+import { PencilIcon } from '../icons/PencilIcon';
 import { SpeakerIcon } from '../icons/SpeakerIcon';
 import { TrashIcon } from '../icons/TrashIcon';
 import { ACTION, COPIED_PILL, COPIED_ROW, DANGER, IDLE, REVEAL } from '@/src/components/row_classes';
+import { EnglishMemoEditor } from './EnglishMemoEditor';
 import { MarkedText } from './MarkedText';
+import { EKeyboardKey } from '@/src/core/types/keyboard';
 
 const EN_WORD = 'text-[17px] font-semibold leading-[1.3]';
 const EN_SENTENCE = 'text-[16px] font-normal leading-[1.35]';
@@ -13,15 +16,32 @@ const EN_SENTENCE = 'text-[16px] font-normal leading-[1.35]';
 type Props = {
   item: EnglishItem;
   expanded: boolean;
+  editing: boolean;
   highlighted: boolean;
   copied: boolean;
   onToggle: () => void;
   onListen: () => void;
   onCopy: () => void;
+  onEdit: () => void;
   onDelete: () => void;
+  onSaveEdit: (draft: EnglishDraft) => void;
+  onCancelEdit: () => void;
 };
 
-export function EnglishMemoRow({ item, expanded, highlighted, copied, onToggle, onListen, onCopy, onDelete }: Props): React.JSX.Element {
+export function EnglishMemoRow({
+  item,
+  expanded,
+  editing,
+  highlighted,
+  copied,
+  onToggle,
+  onListen,
+  onCopy,
+  onEdit,
+  onDelete,
+  onSaveEdit,
+  onCancelEdit,
+}: Props): React.JSX.Element {
   const isWord = item.type === ENGLISH_TYPE.WORD;
   const panelId = `english-panel-${item.id}`;
   const plain = stripBrackets(item.en);
@@ -34,6 +54,18 @@ export function EnglishMemoRow({ item, expanded, highlighted, copied, onToggle, 
       return 'bg-hover outline outline-2 outline-teal -outline-offset-2 rounded-[8px]';
     }
     return '';
+  };
+
+  const turnOnEditMode = (event: React.KeyboardEvent<HTMLDivElement>): void => {
+    const target = event.target as HTMLElement | null;
+    if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA') {
+      return;
+    }
+    if (editing || event.key !== EKeyboardKey.EDIT || event.nativeEvent.isComposing) {
+      return;
+    }
+    event.preventDefault();
+    onEdit();
   };
 
   // scroll-mt / scroll-mb leave the gap, so `block: 'nearest'` can stay
@@ -56,18 +88,21 @@ export function EnglishMemoRow({ item, expanded, highlighted, copied, onToggle, 
       data-id={item.id}
       data-type={item.type}
       data-expanded={String(expanded)}
+      onKeyDown={turnOnEditMode}
     >
       <div className="flex items-start gap-[4px] py-[8px]">
-        {/* A real button with aria-expanded. The action buttons are its
-            SIBLINGS, never its children: nested buttons resolve the click to
-            the outer one, so Copy would also expand the row. */}
         <button
           className="flex-1 min-w-0 flex flex-col items-stretch gap-[3px] pr-[6px] text-left cursor-pointer"
           type="button"
           title="Show the example"
           aria-expanded={expanded}
           aria-controls={panelId}
-          onClick={onToggle}
+          onClick={() => {
+            if (editing) {
+              return;
+            }
+            onToggle();
+          }}
         >
           <span className={`block ${isWord ? EN_WORD : EN_SENTENCE}`}>
             <MarkedText en={item.en} />
@@ -80,38 +115,52 @@ export function EnglishMemoRow({ item, expanded, highlighted, copied, onToggle, 
           ) : null}
         </button>
 
-        <button
-          className={`${ACTION} ${IDLE} ${REVEAL}`}
-          type="button"
-          title="Listen"
-          aria-label={`Listen to "${plain}"`}
-          onClick={onListen}
-        >
-          <SpeakerIcon />
-        </button>
+        {editing ? null : (
+          <>
+            <button
+              className={`${ACTION} ${IDLE} ${REVEAL}`}
+              type="button"
+              title="Listen"
+              aria-label={`Listen to "${plain}"`}
+              onClick={onListen}
+            >
+              <SpeakerIcon />
+            </button>
 
-        <button
-          className={copied ? COPIED_PILL : `${ACTION} ${IDLE} ${REVEAL}`}
-          type="button"
-          title={copied ? 'Copied' : 'Copy to clipboard'}
-          aria-label={copied ? 'Copied' : 'Copy to clipboard'}
-          onClick={onCopy}
-        >
-          {copied ? <span className="leading-none">✓ Copied</span> : <CopyIcon />}
-        </button>
+            <button
+              className={copied ? COPIED_PILL : `${ACTION} ${IDLE} ${REVEAL}`}
+              type="button"
+              title={copied ? 'Copied' : 'Copy to clipboard'}
+              aria-label={copied ? 'Copied' : 'Copy to clipboard'}
+              onClick={onCopy}
+            >
+              {copied ? <span className="leading-none">✓ Copied</span> : <CopyIcon />}
+            </button>
 
-        <button
-          className={`${ACTION} ${DANGER} ${REVEAL}`}
-          type="button"
-          title="Delete"
-          aria-label={`Delete "${plain}"`}
-          onClick={onDelete}
-        >
-          <TrashIcon />
-        </button>
+            <button className={`${ACTION} ${IDLE} ${REVEAL}`} type="button" title="Edit" aria-label={`Edit "${plain}"`} onClick={onEdit}>
+              <PencilIcon />
+            </button>
+
+            <button
+              className={`${ACTION} ${DANGER} ${REVEAL}`}
+              type="button"
+              title="Delete"
+              aria-label={`Delete "${plain}"`}
+              onClick={onDelete}
+            >
+              <TrashIcon />
+            </button>
+          </>
+        )}
       </div>
 
-      {expanded ? (
+      {editing ? (
+        <div id={panelId}>
+          <EnglishMemoEditor item={item} onSave={onSaveEdit} onCancel={onCancelEdit} />
+        </div>
+      ) : null}
+
+      {expanded && !editing ? (
         <div id={panelId} className="pb-[10px]">
           <p className="m-0 text-[12px] italic leading-[1.45] text-soft">{item.example ?? 'No example yet.'}</p>
         </div>
